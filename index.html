@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Coin Drop v5.3</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; overflow:hidden; background:#131c30; touch-action:manipulation;
+    font-family:'Courier New', monospace; font-weight:bold; user-select:none; }
+  #app { height:100dvh; display:flex; flex-direction:column; }
+  svg.gem { width:14px; height:14px; vertical-align:-2px; }
+
+  /* ===== HUD ===== */
+  #hud { display:flex; align-items:center; gap:6px; padding:8px 10px 8px; color:#fff;
+    background:linear-gradient(180deg,#3a4f7d,#2b3c63); border-bottom:3px solid #0d1526;
+    box-shadow:0 3px 10px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.25); }
+  .hbtn { width:36px; height:36px; font-size:15px; color:#fff; cursor:pointer; border-radius:10px;
+    background:linear-gradient(180deg,#55688f,#3a4f7d); border:3px solid #0d1526;
+    box-shadow:0 3px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.3); text-shadow:0 1px 0 #000; }
+  .hbtn:active { transform:translateY(3px); box-shadow:0 0 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.15); }
+  .hbtn.off { opacity:.45; }
+  #lvlChip { background:linear-gradient(180deg,#ffd94a,#f0a92c); border:3px solid #0d1526; border-radius:10px;
+    box-shadow:0 3px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.5);
+    padding:5px 9px; font-size:12px; color:#4a2c00; text-shadow:0 1px 0 rgba(255,255,255,.4); }
+  #goalWrap { flex:1; text-align:center; }
+  #goalTitle { color:#ffd94a; font-size:15px; letter-spacing:3px; text-shadow:0 2px 0 #000, 0 0 12px rgba(255,217,74,.45); }
+  #goalBar { position:relative; height:24px; margin:4px auto 0; max-width:260px; background:#0a1120;
+    border:3px solid #0d1526; border-radius:14px; overflow:hidden;
+    box-shadow:inset 0 3px 8px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.2); }
+  #goalFill { height:100%; width:0%; border-radius:12px; transition:width .2s; position:relative;
+    background:linear-gradient(180deg,#8fd4ff,#3aa0ff 55%,#1f6fc0); box-shadow:inset 0 2px 0 rgba(255,255,255,.5); }
+  #goalFill:after { content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);
+    animation:shine 2.6s linear infinite; }
+  @keyframes shine { from{transform:translateX(-100%)} to{transform:translateX(100%)} }
+  #goalText { position:absolute; inset:0; line-height:20px; font-size:12px; color:#fff; text-shadow:0 1px 0 #000, 0 0 6px #000; }
+  #wallet { min-width:96px; text-align:right; padding:6px 10px; font-size:14px; color:#4a2c00; border-radius:12px;
+    background:linear-gradient(180deg,#ffd94a,#f0a92c); border:3px solid #0d1526;
+    box-shadow:0 3px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.55); text-shadow:0 1px 0 rgba(255,255,255,.4); }
+  @media (max-width:640px){
+    #hud { flex-wrap:wrap; }
+    #goalWrap { order:10; flex-basis:100%; }
+    #goalBar { max-width:100%; }
+    .hbtn { width:32px; height:32px; font-size:13px; }
+    #wallet { min-width:78px; font-size:13px; padding:5px 8px; }
+    #lvlChip { font-size:11px; padding:4px 7px; }
+  }
+  #resRow { display:flex; gap:6px; justify-content:center; align-items:center; padding:6px 10px;
+    background:#22304a; border-bottom:3px solid #0d1526; box-shadow:inset 0 2px 0 rgba(255,255,255,.08); }
+  .rchip { display:inline-flex; align-items:center; gap:5px; padding:3px 12px; font-size:12px; color:#fff;
+    border:3px solid #0d1526; border-radius:14px;
+    box-shadow:0 2px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.35); text-shadow:0 1px 0 #000; }
+  .rchip.red { background:linear-gradient(180deg,#ff7788,#e03346); }
+  .rchip.blue { background:linear-gradient(180deg,#6cc4ff,#2f8fe0); }
+  .rchip .gem { width:13px; height:13px; filter:drop-shadow(0 1px 1px rgba(0,0,0,.5)); }
+  #buffChips { color:#4a2c00; font-size:11px; background:linear-gradient(180deg,#ffd94a,#f0a92c);
+    padding:3px 10px; border-radius:12px; border:3px solid #0d1526; box-shadow:0 2px 0 #0d1526; }
+
+  /* ===== REWARDED BUTTONS ===== */
+  #rwRow { display:flex; gap:6px; justify-content:center; padding:6px 10px; background:#1a2440;
+    border-bottom:3px solid #0d1526; box-shadow:inset 0 2px 0 rgba(255,255,255,.05); }
+  #rwRow.hide { display:none; }
+  .rwbtn { flex:1; max-width:180px; padding:6px 8px; font-family:inherit; font-weight:bold; font-size:11px;
+    color:#fff; cursor:pointer; border-radius:10px; border:3px solid #0d1526;
+    background:linear-gradient(180deg,#6cc4ff,#2f8fe0); box-shadow:0 3px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.3);
+    text-shadow:0 1px 0 #0a2a4a; display:flex; align-items:center; justify-content:center; gap:5px; }
+  .rwbtn:active { transform:translateY(3px); box-shadow:0 0 0 #0d1526; }
+
+  /* ===== VIEWS ===== */
+  #main { flex:1; min-height:0; display:flex; background:#131c30; }
+  .view { flex:1; display:none; flex-direction:column; min-width:0; }
+  .view.active { display:flex; }
+  .view.scroll { overflow-y:auto; padding:10px; gap:8px; }
+  #cvWrap { flex:1; min-height:0; display:flex; align-items:center; justify-content:center; background:#131c30; }
+  canvas { background:#131c30; }
+  .panelTitle { color:#ffd94a; font-size:13px; letter-spacing:1px; text-align:center;
+    text-shadow:0 2px 0 #000, 0 0 10px rgba(255,217,74,.35); padding:6px 0 8px; }
+  .panelTitle .gem { width:15px; height:15px; }
+  .secTitle { color:#9fb0d8; font-size:11px; letter-spacing:1px; margin:6px 2px 2px; text-shadow:0 1px 0 #000; }
+
+  /* ===== SKILL TREE + ZOOM ===== */
+  #zoomBar { display:flex; gap:6px; justify-content:center; align-items:center; padding:0 8px 6px; }
+  .zbtn { width:32px; height:30px; font-size:15px; color:#fff; cursor:pointer; border-radius:8px;
+    background:linear-gradient(180deg,#55688f,#3a4f7d); border:3px solid #0d1526;
+    box-shadow:0 3px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.3); }
+  .zbtn:active { transform:translateY(3px); box-shadow:0 0 0 #0d1526; }
+  .zbtn.wide { width:auto; padding:0 8px; font-size:10px; }
+  #zoomPct { min-width:46px; text-align:center; color:#ffd94a; font-size:11px; background:#0d1526;
+    border:2px solid #3a4f7d; border-radius:8px; padding:4px 2px; }
+  #zoomHint { color:#7d8ba3; font-size:9px; font-weight:normal; margin-left:4px; }
+  #treeWrap { flex:1; overflow:auto; border-top:3px solid #0d1526;
+    background:radial-gradient(circle at 50% 25%, #2b3c63, #16203a 80%); }
+  #treeScale { position:relative; margin:0 auto; }
+  #tree { position:relative; width:980px; height:1180px; transform-origin:0 0; }
+  #treeSvg { position:absolute; inset:0; width:100%; height:100%; }
+  .node { position:absolute; width:62px; height:62px; margin:-31px 0 0 -31px; border-radius:50%;
+    border:3px solid #0d1526; background:radial-gradient(circle at 35% 30%, #55688f, #2b3c63 72%);
+    box-shadow:0 4px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.3), inset 0 -6px 10px rgba(0,0,0,.35);
+    display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:.55; }
+  .node .ic svg:not(.gem) { width:32px; height:32px; display:block; filter:drop-shadow(0 2px 2px rgba(0,0,0,.55)); }
+  .node.av { opacity:1; border-color:#2f8f2f;
+    box-shadow:0 4px 0 #0d1526, 0 0 14px rgba(88,208,88,.65), inset 0 2px 0 rgba(255,255,255,.3); }
+  .node.own { opacity:1; border-color:#8a5a10;
+    background:radial-gradient(circle at 35% 30%, #ffe89a, #f0a92c 75%);
+    box-shadow:0 4px 0 #0d1526, 0 0 16px rgba(255,217,74,.6), inset 0 2px 0 rgba(255,255,255,.6); }
+  .node .c { position:absolute; bottom:-16px; left:50%; transform:translateX(-50%); font-size:9px; color:#ffd0d6;
+    background:#0a1120; border:2px solid #e03346; border-radius:8px; padding:0 5px; white-space:nowrap; }
+  .node .c .gem { width:9px; height:9px; vertical-align:-1px; }
+  .node.own .c { display:none; }
+  .tic svg { width:18px; height:18px; vertical-align:-3px; }
+
+  /* ===== GAME SHOP ===== */
+  #shop { display:flex; gap:7px; padding:8px 8px 10px; background:linear-gradient(180deg,#2b3c63,#22304a);
+    border-top:3px solid #0d1526; box-shadow:inset 0 2px 0 rgba(255,255,255,.08); }
+  .card { flex:1; background:linear-gradient(180deg,#3a4f7d,#2b3c63); border:3px solid #0d1526; border-radius:16px;
+    overflow:hidden; text-align:center; box-shadow:0 4px 0 #0d1526, inset 0 1px 0 rgba(255,255,255,.25); }
+  .card .cap { background:linear-gradient(180deg,#ffd94a,#f0a92c); color:#4a2c00; font-size:10px; letter-spacing:.5px;
+    padding:5px 0; text-shadow:0 1px 0 rgba(255,255,255,.4); border-bottom:3px solid #0d1526; }
+  .card .icon { height:38px; display:flex; align-items:center; justify-content:center; gap:4px; }
+  .card .stat { font-size:10px; color:#9fb0d8; margin:-2px 0 4px; }
+  .buy { display:block; width:88%; margin:0 auto 8px; padding:7px 0; font-family:inherit; font-weight:bold;
+    font-size:13px; color:#fff; text-shadow:0 1px 0 #0a3a0a; border-radius:12px; cursor:pointer;
+    background:linear-gradient(180deg,#7ce87c,#3fbf3f); border:3px solid #145014;
+    box-shadow:0 4px 0 #145014, inset 0 2px 0 rgba(255,255,255,.5); }
+  .buy:active { transform:translateY(4px); box-shadow:0 0 0 #145014, inset 0 2px 0 rgba(255,255,255,.3); }
+  .buy:disabled, .card.off .buy { background:linear-gradient(180deg,#7d8ba3,#5a6880); border-color:#33415e;
+    color:#dfe8f5; text-shadow:0 1px 0 #33415e; box-shadow:0 4px 0 #2a3140, inset 0 2px 0 rgba(255,255,255,.15);
+    cursor:default; }
+  .buy:disabled:active, .card.off .buy:active { transform:none; box-shadow:0 4px 0 #2a3140, inset 0 2px 0 rgba(255,255,255,.15); }
+  .card.off .icon { opacity:.45; }
+  .iPad { width:56px; height:10px; background:repeating-linear-gradient(45deg,#ffcc33 0 8px,#2b2b2b 8px 16px);
+    border:3px solid #0d1526; border-radius:4px; position:relative; box-shadow:inset 0 2px 0 rgba(255,255,255,.35); }
+  .iPad:after { content:''; position:absolute; left:50%; top:10px; width:8px; height:8px; background:#8fa2c4; transform:translateX(-50%); border:2px solid #0d1526; }
+  .iCoin { width:30px; height:30px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe89a, #ffcc33 55%, #c98f1b);
+    border:3px solid #0d1526; color:#8a5a10; font-size:15px; line-height:26px; box-shadow:0 2px 3px rgba(0,0,0,.5), inset 0 2px 0 rgba(255,255,255,.6); }
+  .iM1,.iM2 { width:22px; height:22px; border-radius:50%; border:3px solid #0d1526; color:#8a5a10; font-size:11px; line-height:18px;
+    background:radial-gradient(circle at 35% 30%, #ffe89a, #ffcc33 55%, #c98f1b); box-shadow:0 1px 2px rgba(0,0,0,.5); }
+  .iTube { width:14px; height:24px; background:linear-gradient(90deg,#5d6f94,#c7d4ea,#8fa2c4,#4a5a7c); border:3px solid #0d1526; border-radius:4px; position:relative; margin:0 6px 8px 0; }
+  .iTube:after { content:''; position:absolute; left:50%; bottom:-9px; width:12px; height:12px; transform:translateX(-50%);
+    border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe89a, #ffcc33 60%, #c98f1b); border:2px solid #0d1526; }
+  .iPlus { color:#58d058; font-size:15px; text-shadow:0 1px 0 #000; }
+
+  /* ===== ФОЛЬГА-ПАКИ ===== */
+  .pack3d { width:76px; height:100px; position:relative; border-radius:10px; flex:none;
+    background:linear-gradient(160deg,var(--c1),var(--c2) 55%,var(--c3));
+    border:3px solid #0d1526;
+    box-shadow:0 5px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.45), inset 0 -10px 16px rgba(0,0,0,.35); }
+  .pack3d.idle { animation:bobA 3.2s ease-in-out infinite; }
+  @keyframes bobA { 50% { transform:translateY(-5px); } }
+  .pk-common { --c1:#c7d4ea; --c2:#8fa2c4; --c3:#5a6880; }
+  .pk-rare   { --c1:#8fd4ff; --c2:#3aa0ff; --c3:#1f6fc0; }
+  .pk-epic   { --c1:#f2b8ee; --c2:#d95bd0; --c3:#8e2f86; }
+  .pk-legend { --c1:#ffe89a; --c2:#ffcc33; --c3:#c98f1b; }
+  .pk-legend { animation:bobA 3.2s ease-in-out infinite, legGlow 2s ease-in-out infinite; }
+  @keyframes legGlow { 50% { box-shadow:0 5px 0 #0d1526, 0 0 22px rgba(255,204,51,.75), inset 0 2px 0 rgba(255,255,255,.45); } }
+  .pack3d .pcrimpt, .pack3d .pcrimpb { position:absolute; left:-3px; right:-3px; height:8px;
+    background:repeating-linear-gradient(90deg, var(--c2) 0 5px, #0d1526 5px 7px); border-radius:3px; }
+  .pack3d .pcrimpt { top:-7px; } .pack3d .pcrimpb { bottom:-7px; }
+  .pack3d .pglow { position:absolute; inset:0; border-radius:8px;
+    background:radial-gradient(circle at 50% 42%, rgba(255,255,255,.4), transparent 62%); }
+  .pack3d .pem { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding-bottom:10px; }
+  .pack3d .pem svg { width:36px; height:36px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); }
+  .pack3d .plabel { position:absolute; bottom:5px; left:0; right:0; text-align:center;
+    font-size:8px; letter-spacing:1px; color:#0d1526; }
+  .pack3d .psh { position:absolute; inset:0; border-radius:8px; overflow:hidden; pointer-events:none; }
+  .pack3d .psh:after { content:''; position:absolute; inset:-40%;
+    background:linear-gradient(115deg, transparent 42%, rgba(255,255,255,.55) 50%, transparent 58%);
+    animation:psweep 2.9s ease-in-out infinite; }
+  @keyframes psweep { 0%{transform:translateX(-70%)} 55%{transform:translateX(70%)} 100%{transform:translateX(70%)} }
+  .pack3d.big { width:132px; height:172px; border-radius:14px; }
+  .pack3d.big .pem svg { width:60px; height:60px; }
+  .pack3d.big .plabel { font-size:10px; bottom:8px; }
+  .pwrap { width:84px; flex:none; display:flex; align-items:center; justify-content:center; }
+
+  /* ===== PACK SHOP ROWS ===== */
+  .packRow { display:flex; align-items:center; gap:10px; border:3px solid #0d1526; border-radius:16px;
+    padding:12px 12px; box-shadow:0 4px 0 #0d1526, inset 0 1px 0 rgba(255,255,255,.2); }
+  .packRow .pinfo { flex:1; display:flex; flex-direction:column; gap:3px; min-width:0; }
+  .packRow .pinfo b { color:#fff; font-size:13px; text-shadow:0 1px 0 #000; }
+  .packRow .pinfo i { font-style:normal; font-size:10px; color:#dfe8f5; }
+  .odds { display:flex; gap:6px; font-size:9px; color:#dfe8f5; flex-wrap:wrap; }
+  .odds span { display:inline-flex; align-items:center; gap:3px; }
+  .odds em { width:8px; height:8px; border-radius:2px; display:inline-block; border:1px solid #0d1526; }
+  .packRow .buy { width:auto; min-width:92px; margin:0; padding:8px 10px; font-size:12px;
+    background:linear-gradient(180deg,#6cc4ff,#2f8fe0); border-color:#14507a;
+    box-shadow:0 4px 0 #14507a, inset 0 2px 0 rgba(255,255,255,.5); text-shadow:0 1px 0 #0a2a4a; }
+  .packRow .buy .gem { width:12px; height:12px; }
+
+  /* ===== SEALED + COLLECTION ===== */
+  .sealRow { display:flex; align-items:center; gap:10px; background:#22304a; border:3px solid #0d1526;
+    border-radius:14px; padding:9px 10px; box-shadow:0 3px 0 #0d1526; }
+  .sealRow b { color:#fff; font-size:12px; flex:1; text-shadow:0 1px 0 #000; }
+  .sealRow .cnt { color:#ffd94a; font-size:13px; }
+  .sealRow .buy { width:auto; min-width:84px; margin:0; padding:7px 10px; font-size:12px; }
+  #collGrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(122px,1fr)); gap:10px; }
+
+  /* ===== ТОРГОВЫЕ КАРТЫ ===== */
+  .tcard { width:100%; border-radius:14px; padding:7px 7px 6px; position:relative;
+    background:linear-gradient(180deg,#33415e,#1a2440); border:3px solid #0d1526;
+    box-shadow:0 4px 0 #0d1526, inset 0 1px 0 rgba(255,255,255,.2); }
+  .tcard.r0 { border-color:#7d8ba3; }
+  .tcard.r1 { border-color:#3aa0ff; box-shadow:0 4px 0 #0d1526, 0 0 12px rgba(58,160,255,.45), inset 0 1px 0 rgba(255,255,255,.2); }
+  .tcard.r2 { border-color:#d95bd0; box-shadow:0 4px 0 #0d1526, 0 0 14px rgba(217,91,208,.5), inset 0 1px 0 rgba(255,255,255,.2); }
+  .tcard.r3 { border-color:#ffcc33; box-shadow:0 4px 0 #0d1526, 0 0 18px rgba(255,204,51,.55), inset 0 1px 0 rgba(255,255,255,.2);
+    animation:legPulse 2.2s ease-in-out infinite; }
+  @keyframes legPulse { 50% { box-shadow:0 4px 0 #0d1526, 0 0 28px rgba(255,204,51,.85), inset 0 1px 0 rgba(255,255,255,.2); } }
+  .tart { height:62px; border-radius:9px; border:2px solid #0d1526; display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden; }
+  .tart svg { width:34px; height:34px; filter:drop-shadow(0 2px 3px rgba(0,0,0,.6)); position:relative; z-index:1; }
+  .cat-coin { background:radial-gradient(circle at 50% 35%, rgba(255,232,154,.5), rgba(255,204,51,.12) 55%, transparent 75%),
+    repeating-conic-gradient(from 0deg at 50% 40%, rgba(255,204,51,.16) 0 9deg, transparent 9deg 18deg), #22304a; }
+  .cat-pad { background:radial-gradient(circle at 50% 60%, rgba(255,204,51,.35), transparent 70%),
+    repeating-linear-gradient(45deg, rgba(255,204,51,.14) 0 10px, transparent 10px 20px), #22304a; }
+  .cat-tube { background:radial-gradient(circle at 50% 20%, rgba(160,200,255,.4), transparent 65%),
+    linear-gradient(180deg, rgba(90,140,220,.25), transparent 60%), #22304a; }
+  .cat-gen { background:radial-gradient(circle at 50% 45%, rgba(217,91,208,.35), transparent 70%),
+    repeating-conic-gradient(from 45deg at 50% 50%, rgba(255,255,255,.06) 0 12deg, transparent 12deg 24deg), #22304a; }
+  .tname { margin-top:5px; background:linear-gradient(180deg,#0d1526,#1a2440); border:2px solid #0d1526; border-radius:7px;
+    padding:3px 2px; font-size:8.5px; color:#fff; text-shadow:0 1px 0 #000; min-height:26px;
+    display:flex; align-items:center; justify-content:center; line-height:1.25; }
+  .tdesc { font-size:7.5px; font-weight:normal; color:#c7d4ea; margin:4px 1px 4px; line-height:1.35; min-height:32px; }
+  .tfoot { display:flex; align-items:center; justify-content:space-between; font-size:8px; gap:3px; }
+  .tlv { color:#ffd94a; background:#0d1526; border:1px solid #ffd94a; border-radius:6px; padding:1px 5px; }
+  .tpips { color:#7dff8a; letter-spacing:2px; }
+  .trar { font-size:7px; color:#0d1526; padding:1px 5px; border-radius:6px; border:1px solid #0d1526; }
+  .r0 .trar{background:#9fb0d8} .r1 .trar{background:#6cc4ff} .r2 .trar{background:#d95bd0;color:#fff} .r3 .trar{background:#ffcc33}
+  .tfoil { position:absolute; inset:0; border-radius:11px; pointer-events:none; mix-blend-mode:screen; opacity:0;
+    background:linear-gradient(115deg, transparent 32%, rgba(255,255,255,.28) 44%, rgba(140,255,255,.22) 50%, rgba(255,255,255,.28) 56%, transparent 68%);
+    background-size:280% 280%; animation:foil 3.6s linear infinite; }
+  .r2 .tfoil{opacity:.7} .r3 .tfoil{opacity:1}
+  @keyframes foil { 0%{background-position:120% 120%} 100%{background-position:-40% -40%} }
+  .tcp { position:absolute; top:-9px; right:-6px; background:#0d1526; color:#ffd94a; border:2px solid #ffd94a;
+    border-radius:9px; font-size:8px; padding:1px 6px; z-index:2; }
+  .tcard.locked { opacity:.5; }
+  .tcard.locked .tart { filter:grayscale(1) brightness(.5); }
+  .tcard.locked .tname { color:#7d8ba3; }
+  .tcard.reveal { animation:cardIn .55s cubic-bezier(.2,.8,.3,1.2) both; }
+  @keyframes cardIn { 0%{transform:rotateY(90deg) scale(.5); opacity:0} 60%{transform:rotateY(-14deg) scale(1.06); opacity:1} 100%{transform:none; opacity:1} }
+
+  /* ===== СЦЕНА ОТКРЫТИЯ ===== */
+  #packModal { position:fixed; inset:0; background:rgba(5,10,20,.88); display:none; align-items:center; justify-content:center; z-index:12; }
+  #packModal.show { display:flex; }
+  #packModal.quake { animation:quakeA .45s linear; }
+  @keyframes quakeA { 0%,100%{transform:translate(0,0)} 20%{transform:translate(-7px,4px)} 40%{transform:translate(7px,-4px)} 60%{transform:translate(-5px,-3px)} 80%{transform:translate(5px,3px)} }
+  #pmPanel { background:linear-gradient(180deg,#3a4f7d,#22304a); border:4px solid #0d1526; border-radius:20px;
+    padding:16px; width:min(460px,94vw); max-height:86vh; overflow-y:auto; text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.7), inset 0 2px 0 rgba(255,255,255,.3); position:relative; }
+  #pmTitle { color:#ffd94a; font-size:15px; margin-bottom:8px; text-shadow:0 2px 0 #000; }
+  #pmStage { position:relative; height:196px; display:flex; align-items:center; justify-content:center; }
+  #pmBurst { position:absolute; inset:-30px; opacity:0; pointer-events:none;
+    background:repeating-conic-gradient(rgba(255,255,255,.32) 0 7deg, transparent 7deg 14deg);
+    -webkit-mask:radial-gradient(circle, #000 25%, transparent 68%); mask:radial-gradient(circle, #000 25%, transparent 68%); }
+  #pmBurst.on { opacity:1; animation:spin 10s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #pmFlash { position:fixed; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:14; }
+  #pmFlash.on { animation:flashA .5s ease-out forwards; }
+  @keyframes flashA { 0%{opacity:.9} 100%{opacity:0} }
+  .pack3d.shaking { animation:ptrem1 .14s linear infinite; }
+  .pack3d.shaking2 { animation:ptrem2 .09s linear infinite; }
+  @keyframes ptrem1 { 0%{transform:translate(0,0) rotate(0)} 25%{transform:translate(-2px,1px) rotate(-1.5deg)} 50%{transform:translate(2px,-1px) rotate(1.5deg)} 75%{transform:translate(-1px,-1px) rotate(-1deg)} 100%{transform:translate(0,0)} }
+  @keyframes ptrem2 { 0%{transform:translate(0,0) rotate(0) scale(1.03)} 25%{transform:translate(-5px,3px) rotate(-3deg) scale(1.05)} 50%{transform:translate(5px,-3px) rotate(3deg) scale(1.06)} 75%{transform:translate(-4px,-2px) rotate(-2deg) scale(1.04)} 100%{transform:translate(0,0) rotate(0) scale(1.03)} }
+  .pack3d.boom { animation:pboom .4s ease-in forwards; }
+  @keyframes pboom { to { transform:scale(2.4); opacity:0; filter:brightness(2.6); } }
+  .cf { position:absolute; width:8px; height:12px; top:-14px; border-radius:2px; z-index:3;
+    animation:cfFall var(--d) ease-in forwards; opacity:.95; }
+  @keyframes cfFall { to { transform:translateY(420px) rotate(var(--r)); opacity:0; } }
+  #pmCards { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+  #pmCards .tcard { width:112px; }
+  #pmClose { margin-top:12px; padding:10px 26px; font-family:inherit; font-weight:bold; font-size:14px; color:#000;
+    background:linear-gradient(180deg,#7ce87c,#3fbf3f); border:3px solid #145014; border-radius:12px;
+    box-shadow:0 4px 0 #145014, inset 0 2px 0 rgba(255,255,255,.5); cursor:pointer; visibility:hidden; }
+
+  /* ===== TABS ===== */
+  #tabs { display:flex; border-top:3px solid #0d1526; background:#22304a; }
+  .tab { flex:1; padding:8px 2px 10px; background:none; border:none; color:#7d8ba3; font-family:inherit; font-weight:bold;
+    font-size:10px; display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;
+    border-radius:14px 14px 0 0; position:relative; }
+  .tab em { font-style:normal; font-size:16px; filter:grayscale(70%); }
+  .tab.active { color:#ffd94a; background:linear-gradient(180deg,#3a4f7d,#2b3c63);
+    box-shadow:inset 0 3px 0 #ffd94a, inset 0 -8px 14px rgba(0,0,0,.3); }
+  .tab.active em { filter:none; }
+  .tab .badge { position:absolute; top:4px; right:16%; background:linear-gradient(180deg,#ff7788,#e03346); color:#fff;
+    border-radius:8px; font-size:9px; padding:1px 5px; border:2px solid #0d1526; }
+
+  /* ===== OVERLAYS ===== */
+  #overlay { position:fixed; inset:0; background:rgba(5,10,20,.8); display:none; align-items:center; justify-content:center; z-index:9; }
+  #overlay.show { display:flex; }
+  #winPanel { background:linear-gradient(180deg,#3a4f7d,#2b3c63); border:4px solid #0d1526; border-radius:22px;
+    padding:24px 34px; text-align:center; box-shadow:0 10px 34px rgba(0,0,0,.65), inset 0 2px 0 rgba(255,255,255,.3); }
+  #winPanel h2 { color:#ffd94a; font-size:22px; letter-spacing:2px; text-shadow:0 3px 0 #000, 0 0 16px rgba(255,217,74,.5); margin-bottom:8px; }
+  #winPanel p { color:#c7d4ea; font-size:13px; margin-bottom:16px; }
+  #winPanel p .gem { width:15px; height:15px; }
+  #nextBtn { padding:12px 26px; font-family:inherit; font-weight:bold; font-size:15px; color:#fff;
+    text-shadow:0 1px 0 #0a3a0a; border-radius:14px; cursor:pointer;
+    background:linear-gradient(180deg,#7ce87c,#3fbf3f); border:3px solid #145014;
+    box-shadow:0 5px 0 #145014, inset 0 2px 0 rgba(255,255,255,.5); }
+  #nextBtn:active { transform:translateY(5px); box-shadow:0 0 0 #145014; }
+  #nodeModal { position:fixed; inset:0; background:rgba(5,10,20,.75); display:none; align-items:center; justify-content:center; z-index:10; }
+  #nodeModal.show { display:flex; }
+  #nmPanel { background:linear-gradient(180deg,#3a4f7d,#2b3c63); border:4px solid #0d1526; border-radius:20px;
+    padding:18px 22px; width:300px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.3); }
+  #nmTitle { color:#ffd94a; font-size:15px; margin-bottom:6px; text-shadow:0 2px 0 #000; }
+  #nmDesc { color:#c7d4ea; font-size:12px; font-weight:normal; margin-bottom:8px; }
+  #nmReq { color:#ffb3bc; font-size:10px; margin-bottom:10px; }
+  #nmBuy { padding:10px 20px; font-family:inherit; font-weight:bold; font-size:14px; color:#fff; text-shadow:0 1px 0 #5c1212;
+    background:linear-gradient(180deg,#ff7788,#e03346); border:3px solid #7a1622; border-radius:12px; cursor:pointer;
+    box-shadow:0 4px 0 #7a1622, inset 0 2px 0 rgba(255,255,255,.4); }
+  #nmBuy .gem { width:14px; height:14px; }
+  #nmBuy.off { background:linear-gradient(180deg,#7d8ba3,#5a6880); border-color:#33415e; color:#dfe8f5; text-shadow:0 1px 0 #33415e; }
+  #nmClose { margin-top:10px; background:none; border:none; color:#9fb0d8; font-family:inherit; font-size:11px; cursor:pointer; }
+
+  /* ===== MAIN MENU ===== */
+  #menu { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:30;
+    background:radial-gradient(circle at 50% 20%, #2b3c63, #131c30 75%); }
+  #menu.hide { display:none; }
+  #menuPanel { text-align:center; width:300px; background:linear-gradient(180deg,#3a4f7d,#22304a);
+    border:4px solid #0d1526; border-radius:26px; padding:24px 20px;
+    box-shadow:0 12px 40px rgba(0,0,0,.7), inset 0 2px 0 rgba(255,255,255,.3); }
+  #menuPanel h1 { color:#ffd94a; font-size:34px; letter-spacing:4px;
+    text-shadow:0 3px 0 #8a5a10, 0 6px 0 #0d1526, 0 0 26px rgba(255,217,74,.5); margin-bottom:6px; }
+  #menuPanel .sub { color:#9fb0d8; font-size:11px; margin-bottom:20px; letter-spacing:2px; }
+  .mbtn { display:block; width:100%; margin:0 0 12px; padding:13px 0; font-family:inherit; font-weight:bold;
+    font-size:15px; color:#fff; text-shadow:0 1px 0 #000; border-radius:14px; cursor:pointer;
+    background:linear-gradient(180deg,#55688f,#3a4f7d); border:3px solid #0d1526;
+    box-shadow:0 5px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.3); }
+  .mbtn:active { transform:translateY(5px); box-shadow:0 0 0 #0d1526; }
+  .mbtn.main { background:linear-gradient(180deg,#7ce87c,#3fbf3f); border-color:#145014; color:#fff;
+    text-shadow:0 1px 0 #0a3a0a; font-size:17px; box-shadow:0 5px 0 #145014, inset 0 2px 0 rgba(255,255,255,.5), 0 0 20px rgba(88,208,88,.35); }
+  .mbtn.danger { background:linear-gradient(180deg,#ff7788,#e03346); border-color:#7a1622; font-size:12px;
+    box-shadow:0 5px 0 #7a1622, inset 0 2px 0 rgba(255,255,255,.35); }
+</style>
+</head>
+<body>
+<script>
+window.addEventListener('error', function(e){
+  var d=document.getElementById('errBox');
+  if(!d){ d=document.createElement('div'); d.id='errBox';
+    d.style.cssText='position:fixed;left:4px;top:4px;z-index:9999;background:#000;color:#ff5566;font:11px monospace;padding:6px;max-width:96vw;white-space:pre-wrap;pointer-events:none';
+    document.body.appendChild(d); }
+  d.textContent='JS ERROR: '+(e.message||'?')+' line '+(e.lineno||'?');
+}, true);
+</script>
+<div id="app">
+  <div id="hud">
+    <button class="hbtn" id="muteBtn">🔊</button>
+    <button class="hbtn" id="musBtn">🎵</button>
+    <button class="hbtn" id="langBtn">🌐</button>
+    <button class="hbtn" id="menuBtn">🏠</button>
+    <div id="lvlChip">LVL 1</div>
+    <div id="goalWrap">
+      <div id="goalTitle" data-i18n="goal">ЦЕЛЬ</div>
+      <div id="goalBar"><div id="goalFill"></div><div id="goalText">0 / 100K</div></div>
+    </div>
+    <div id="wallet">💵 0</div>
+  </div>
+  <div id="resRow">
+    <span class="rchip red"><i data-gem="red"></i><b id="redN">0</b></span>
+    <span class="rchip blue"><i data-gem="blue"></i><b id="blueN">0</b></span>
+    <span id="buffChips"></span>
+  </div>
+  <div id="rwRow" class="hide">
+    <button class="rwbtn" id="rwX2">▶ ×2 ДОХОД 60с</button>
+    <button class="rwbtn" id="rwCash">▶ +10 💎 БЕСПЛАТНО</button>
+  </div>
+
+  <div id="main">
+    <div class="view active" id="viewGame">
+      <div id="cvWrap"><canvas id="cv"></canvas></div>
+      <div id="shop">
+        <div class="card" id="cPad">
+          <div class="cap" data-i18n="cap_pad">ПЛАТФОРМА+</div>
+          <div class="icon"><div class="iPad"></div><span class="iPlus">+</span></div>
+          <div class="stat" id="stPad">ПЛАТФ. 1/10</div>
+          <button class="buy" id="bPad">$200</button>
+        </div>
+        <div class="card" id="cCoin">
+          <div class="cap" data-i18n="cap_coin">МОНЕТА+</div>
+          <div class="icon"><div class="iCoin">★</div><span class="iPlus">+</span></div>
+          <div class="stat" id="stCoin">МОНЕТЫ 0/40</div>
+          <button class="buy" id="bCoin">$25</button>
+        </div>
+        <div class="card" id="cMerge">
+          <div class="cap" data-i18n="cap_merge">СЛИЯНИЕ</div>
+          <div class="icon"><div class="iM1">★</div><span class="iPlus">+</span><div class="iM2">★</div></div>
+          <div class="stat" id="stMerge">ПАРЫ 0</div>
+          <button class="buy" id="bMerge">$15</button>
+        </div>
+        <div class="card" id="cTube">
+          <div class="cap" data-i18n="cap_tube">ТРУБА</div>
+          <div class="icon"><div class="iTube"></div><span class="iPlus">+</span></div>
+          <div class="stat" id="stTube">УР 0 • ВЫКЛ</div>
+          <button class="buy" id="bTube">$150</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="view" id="viewProg">
+      <div class="panelTitle"><span data-i18n="tree_title">ДРЕВО НАВЫКОВ</span> • <i data-gem="red"></i> <span id="redTree">0</span> • <span data-i18n="tree_hint">тап по навыку — покупка</span></div>
+      <div id="zoomBar">
+        <button class="zbtn" id="zOut">−</button>
+        <span id="zoomPct">100%</span>
+        <button class="zbtn" id="zIn">+</button>
+        <button class="zbtn wide" id="zRst">1:1</button>
+        <span id="zoomHint" data-i18n="zoom_hint">щипок / двойной тап — зум</span>
+      </div>
+      <div id="treeWrap">
+        <div id="treeScale"><div id="tree"><svg id="treeSvg"></svg></div></div>
+      </div>
+    </div>
+
+    <div class="view scroll" id="viewShopB">
+      <div class="panelTitle"><span data-i18n="packs_title">ПАКИ КАРТ • СИНИЕ КРИСТАЛЛЫ</span> <i data-gem="blue"></i></div>
+      <div id="packShop"></div>
+    </div>
+
+    <div class="view scroll" id="viewOpen">
+      <div class="panelTitle" data-i18n="cards_title">КАРТЫ И ОТКРЫТИЕ</div>
+      <div class="secTitle" data-i18n="packs_sealed">ЗАПЕЧАТАННЫЕ ПАКИ</div>
+      <div id="sealList"></div>
+      <div class="secTitle"><span data-i18n="collection">КОЛЛЕКЦИЯ</span> • <span id="collCnt">0/24</span></div>
+      <div id="collGrid"></div>
+    </div>
+  </div>
+
+  <nav id="tabs">
+    <button class="tab" id="tabProg"><em>📈</em><span data-i18n="tab_tree">ДРЕВО</span></button>
+    <button class="tab active" id="tabGame"><em>🎮</em><span data-i18n="tab_game">ИГРА</span></button>
+    <button class="tab" id="tabShop"><em>🃏</em><span data-i18n="tab_packs">ПАКИ</span></button>
+    <button class="tab" id="tabOpen"><em>🎴</em><span data-i18n="tab_cards">КАРТЫ</span><span class="badge" id="packBadge" style="display:none">0</span></button>
+  </nav>
+</div>
+
+<div id="overlay"><div id="winPanel">
+  <h2 id="winTitle">LEVEL 1 COMPLETE!</h2>
+  <p id="winText"></p>
+  <button id="nextBtn" data-i18n="next">СЛЕДУЮЩИЙ УРОВЕНЬ ▶</button>
+</div></div>
+<div id="nodeModal"><div id="nmPanel">
+  <div id="nmTitle"></div>
+  <div id="nmDesc"></div>
+  <div id="nmReq"></div>
+  <button id="nmBuy"></button><br>
+  <button id="nmClose" data-i18n="close">закрыть ✖</button>
+</div></div>
+<div id="packModal"><div id="pmPanel">
+  <div id="pmTitle"></div>
+  <div id="pmStage"><div id="pmBurst"></div><div id="pmPackHolder"></div></div>
+  <div id="pmCards"></div>
+  <button id="pmClose">OK</button>
+</div></div>
+<div id="pmFlash"></div>
+
+<div id="menu"><div id="menuPanel">
+  <h1>COIN DROP</h1>
+  <div class="sub">idle • merge • pinball</div>
+  <button class="mbtn main" id="mStart">▶ НАЧАТЬ ИГРУ</button>
+  <button class="mbtn" id="mSound">🔊 ЗВУК: ВКЛ</button>
+  <button class="mbtn" id="mMusic">🎵 МУЗЫКА: ВКЛ</button>
+  <button class="mbtn" id="mLang">🌐 ЯЗЫК: РУССКИЙ</button>
+  <button class="mbtn danger" id="mReset">⟲ СБРОС ПРОГРЕССА</button>
+</div></div>
+
+<script>
+'use strict';
+/* ================= SDK PIKABU ================= */
+let SDK=null, sdkReady=false, adPaused=false, pagePaused=document.hidden;
+const CLOUD_SAVE_KEY='coindrop_v2';
+function loadSDK(){
+  try{
+    const s=document.createElement('script');
+    s.src='https://games.pikabu.ru/sdk/sdk.js';
+    s.async=true;
+    s.onload=()=>{ initSDK(); };
+    s.onerror=()=>{ console.warn('Pikabu SDK script not loaded (outside platform?)'); };
+    document.head.appendChild(s);
+  }catch(e){ console.warn('SDK load error', e); }
+}
+function pauseAudio(){
+  musStop();
+  try{ if(AC && AC.state==='running') AC.suspend(); }catch(e){}
+}
+function resumeAudio(){
+  if(document.hidden) return;
+  try{ if(AC && AC.state==='suspended') AC.resume(); if(musicOn) musStart(); }catch(e){}
+}
+function pauseForAd(){ adPaused=true; pauseAudio(); }
+function resumeAfterAd(){ adPaused=false; if(!pagePaused) resumeAudio(); }
+async function initSDK(){
+  try{
+    if (typeof PkbSDK==='undefined') return;
+    SDK = await PkbSDK.init();
+    // Облачный прогресс имеет приоритет; старое локальное сохранение переносится,
+    // если в облаке ещё нет данных этой игры.
+    let cloudData=null;
+    try{ cloudData=SDK.storage && SDK.storage.get(CLOUD_SAVE_KEY); }catch(e){ console.warn('Cloud save read failed',e); }
+    if(cloudData && typeof cloudData==='object' && Number.isFinite(Number(cloudData.level))){
+      if(restoreSaveData(cloudData)){
+        try{ localStorage.setItem(CLOUD_SAVE_KEY,JSON.stringify(cloudData)); }catch(e){}
+        updateTree(); applyLang();
+      }
+    }else{
+      const localData=readLocalSaveData();
+      if(localData && SDK.storage){
+        SDK.storage.set(CLOUD_SAVE_KEY,localData);
+        const migrated=await SDK.storage.flush();
+        if(!migrated.success) console.warn('Initial cloud save migration failed:',migrated.reason);
+      }
+    }
+    sdkReady=true;
+    SDK.on('userAuthorized', p=>{ console.log('Pikabu user authorized',p); });
+    SDK.on('storageSaveError', reason=>{
+      console.warn('Pikabu cloud save error:',reason);
+      if(reason==='REVISION_CONFLICT' && !window.__coindropRevisionPrompt){
+        window.__coindropRevisionPrompt=true;
+        setTimeout(()=>{ if(confirm('Облачное сохранение изменилось в другой вкладке или на другом устройстве. Перезагрузить игру и загрузить актуальный прогресс?')) location.reload(); },0);
+      }
+    });
+    SDK.gameStarted();
+    updateRwButtons();
+    save();
+  }catch(e){ console.warn('SDK init failed', e); }
+}
+async function showFullscreenAd(){
+  if (!sdkReady||!SDK||!SDK.ads?.fullscreen) return false;
+  try{
+    if(SDK.ads.fullscreen.isSupported===false) return false;
+    const can=await SDK.ads.fullscreen.canShow();
+    if (!can) return false;
+    pauseForAd();
+    const r=await SDK.ads.fullscreen.show();
+    return !!(r && r.rendered===true);
+  }catch(e){ console.warn('Fullscreen ad failed:',e); return false; }
+  finally{ resumeAfterAd(); }
+}
+async function showRewardedAd(onReward){
+  if (!sdkReady||!SDK||!SDK.ads?.rewarded) return false;
+  try{
+    if(SDK.ads.rewarded.isSupported===false) return false;
+    const can=await SDK.ads.rewarded.canShow();
+    if (!can) return false;
+    pauseForAd();
+    const r=await SDK.ads.rewarded.show();
+    if (r && r.rendered===true && r.reward===true){ onReward(); save(); return true; }
+    return false;
+  }catch(e){ console.warn('Rewarded ad failed:',e); return false; }
+  finally{ resumeAfterAd(); }
+}
+
+/* ================= КРИСТАЛЛЫ (SVG) ================= */
+const GEM = {
+ red:'<svg class="gem" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9Z" fill="#e03346"/><path d="M6 3h12l2.6 4H3.4Z" fill="#ff7788"/><path d="M8.5 3.5 12 7.5 15.5 3.5" fill="none" stroke="#ffd0d6" stroke-width="1.3"/><path d="M7 10l5 8 5-8" fill="none" stroke="#a11626" stroke-width="1.3"/><path d="M7.4 4.4l1.9 1.9-2.7 1.5-1.4-1.6Z" fill="#fff" opacity=".9"/></svg>',
+ blue:'<svg class="gem" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9Z" fill="#2f8fe0"/><path d="M6 3h12l2.6 4H3.4Z" fill="#6cc4ff"/><path d="M8.5 3.5 12 7.5 15.5 3.5" fill="none" stroke="#d0e8ff" stroke-width="1.3"/><path d="M7 10l5 8 5-8" fill="none" stroke="#1f6fc0" stroke-width="1.3"/><path d="M7.4 4.4l1.9 1.9-2.7 1.5-1.4-1.6Z" fill="#fff" opacity=".9"/></svg>',
+};
+document.querySelectorAll('i[data-gem]').forEach(el=>{ el.outerHTML = GEM[el.dataset.gem]; });
+
+/* ================= ЛОКАЛИЗАЦИЯ ================= */
+let LANG = 'ru';
+const STR = {
+ goal:{en:'GOAL',ru:'ЦЕЛЬ'},
+ cap_pad:{en:'ADD PAD',ru:'ПЛАТФОРМА+'},
+ cap_coin:{en:'ADD COIN',ru:'МОНЕТА+'},
+ cap_merge:{en:'MERGE',ru:'СЛИЯНИЕ'},
+ cap_tube:{en:'TUBE',ru:'ТРУБА'},
+ st_pads:{en:'PADS',ru:'ПЛАТФ.'},
+ st_coins:{en:'COINS',ru:'МОНЕТЫ'},
+ st_pairs:{en:'PAIRS',ru:'ПАРЫ'},
+ lv:{en:'LV',ru:'УР'},
+ off:{en:'OFF',ru:'ВЫКЛ'},
+ max:{en:'MAX',ru:'МАКС'},
+ no_pair:{en:'NO PAIR',ru:'НЕТ ПАРЫ'},
+ win_title:{en:'LEVEL {n} COMPLETE!',ru:'УРОВЕНЬ {n} ПРОЙДЕН!'},
+ win_earned:{en:'Earned: {x}',ru:'Заработано: {x}'},
+ next:{en:'NEXT LEVEL ▶',ru:'СЛЕДУЮЩИЙ УРОВЕНЬ ▶'},
+ tab_tree:{en:'TREE',ru:'ДРЕВО'},
+ tab_game:{en:'GAME',ru:'ИГРА'},
+ tab_packs:{en:'PACKS',ru:'ПАКИ'},
+ tab_cards:{en:'CARDS',ru:'КАРТЫ'},
+ tree_title:{en:'SKILL TREE',ru:'ДРЕВО НАВЫКОВ'},
+ tree_hint:{en:'tap a skill to buy',ru:'тап по навыку — покупка'},
+ zoom_hint:{en:'pinch / double-tap to zoom',ru:'щипок / двойной тап — зум'},
+ packs_title:{en:'CARD PACKS • BLUE CRYSTALS',ru:'ПАКИ КАРТ • СИНИЕ КРИСТАЛЛЫ'},
+ cards_title:{en:'CARDS & OPENING',ru:'КАРТЫ И ОТКРЫТИЕ'},
+ packs_sealed:{en:'SEALED PACKS',ru:'ЗАПЕЧАТАННЫЕ ПАКИ'},
+ collection:{en:'COLLECTION',ru:'КОЛЛЕКЦИЯ'},
+ open_pack:{en:'OPEN',ru:'ОТКРЫТЬ'},
+ pack_cards:{en:'cards',ru:'карт'},
+ pack_common:{en:'COMMON PACK',ru:'ОБЫЧНЫЙ ПАК'},
+ pack_rare:{en:'RARE PACK',ru:'РЕДКИЙ ПАК'},
+ pack_epic:{en:'EPIC PACK',ru:'ЭПИЧЕСКИЙ ПАК'},
+ pack_legend:{en:'LEGENDARY PACK',ru:'ЛЕГЕНДАРНЫЙ ПАК'},
+ rar0:{en:'COMMON',ru:'ОБЫЧНАЯ'}, rar1:{en:'RARE',ru:'РЕДКАЯ'},
+ rar2:{en:'EPIC',ru:'ЭПИЧЕСКАЯ'}, rar3:{en:'LEGENDARY',ru:'ЛЕГЕНДАРНАЯ'},
+ cat_coin:{en:'COINS',ru:'МОНЕТЫ'}, cat_pad:{en:'PADS',ru:'БАТУТЫ'},
+ cat_tube:{en:'TUBE',ru:'ТРУБА'}, cat_gen:{en:'GENERAL',ru:'ОБЩАЯ'},
+ buy:{en:'BUY',ru:'КУПИТЬ'},
+ owned:{en:'OWNED',ru:'КУПЛЕНО'},
+ requires:{en:'Requires:',ru:'Требуется:'},
+ close:{en:'close ✖',ru:'закрыть ✖'},
+ bailout:{en:'BAILOUT',ru:'СПАСЕНИЕ'},
+ crit:{en:'CRIT',ru:'КРИТ'},
+ sale:{en:'SALE',ru:'РАСПРОДАЖА'},
+ turbo:{en:'TURBO',ru:'ТУРБО'},
+ rw_x2:{en:'▶ ×2 INCOME 60s',ru:'▶ ×2 ДОХОД 60с'},
+ rw_cash:{en:'▶ +10 💎 FREE',ru:'▶ +10 💎 БЕСПЛАТНО'},
+ menu_start:{en:'▶ START GAME',ru:'▶ НАЧАТЬ ИГРУ'},
+ menu_sound_on:{en:'🔊 SOUND: ON',ru:'🔊 ЗВУК: ВКЛ'},
+ menu_sound_off:{en:'🔇 SOUND: OFF',ru:'🔇 ЗВУК: ВЫКЛ'},
+ menu_music_on:{en:'🎵 MUSIC: ON',ru:'🎵 МУЗЫКА: ВКЛ'},
+ menu_music_off:{en:'🎵 MUSIC: OFF',ru:'🎵 МУЗЫКА: ВЫКЛ'},
+ menu_lang:{en:'🌐 LANGUAGE: ENGLISH',ru:'🌐 ЯЗЫК: РУССКИЙ'},
+ menu_reset:{en:'⟲ RESET PROGRESS',ru:'⟲ СБРОС ПРОГРЕССА'},
+ reset_confirm:{en:'Reset all progress?',ru:'Сбросить весь прогресс?'},
+};
+const L = (k,v) => { let s=STR[k][LANG]; if (v) for (const q in v) s=s.replace('{'+q+'}', v[q]); return s; };
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = L(el.dataset.i18n); });
+  document.getElementById('mStart').textContent = L('menu_start');
+  document.getElementById('mSound').textContent = L(muted?'menu_sound_off':'menu_sound_on');
+  document.getElementById('mMusic').textContent = L(musicOn?'menu_music_on':'menu_music_off');
+  document.getElementById('mLang').textContent = L('menu_lang');
+  document.getElementById('mReset').textContent = L('menu_reset');
+  if (sdkReady) updateRwButtons();
+  renderPackShop(); renderSealed(); renderCollection();
+}
+
+/* ================= КОНФИГ ================= */
+const W = 540, H = 720;          // логическая ширина игрового поля (физика/уровни)
+const GRAV = 950, KICK = 520, MAXV = 950;
+const REST_WALL = 0.88, REST_COIN = 0.85;
+const HIT_BASE = 5, MERGE_MULT = 3, START_WALLET = 100;
+const COST = { coin:[25,1.35], pad:[200,2.0], merge:[15,1.7] };
+const MAX_COINS_BASE = 40;
+const GOAL_BASE = 100000, GOAL_MULT = 3;
+const PAD_T = 14;
+const TUBE = { base:150, mult:1.45, max:51, t0:60, step:1, min:10 };
+const TIER_COLORS = ['#ffcc33','#ff9933','#ff5566','#d95bd0','#8f6bf9','#5b8bf9','#5bd0c9','#7ddf67','#f7f7a1','#ffffff'];
+const BR_SVG = [
+ '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#ffcc33" stroke="#7a4c0c" stroke-width="2"/><path d="M12 6.5 13.8 10.2 17.9 10.8 15 13.6 15.7 17.7 12 15.8 8.3 17.7 9 13.6 6.1 10.8 10.2 10.2Z" fill="#ffe89a"/></svg>',
+ '<svg viewBox="0 0 24 24"><rect x="1" y="8" width="22" height="8" rx="2" fill="#2b2b2b" stroke="#0d1526" stroke-width="1.5"/><path d="M4 8h5l-3 8H3z" fill="#ffcc33"/><path d="M11 8h5l-3 8H8z" fill="#ffcc33"/><path d="M18 8h4l-2.5 8h-5z" fill="#ffcc33"/></svg>',
+ '<svg viewBox="0 0 24 24"><rect x="9" y="1" width="6" height="11" fill="#8fa2c4" stroke="#0d1526" stroke-width="1.5"/><rect x="6" y="11" width="12" height="3" fill="#55688f" stroke="#0d1526" stroke-width="1"/><circle cx="12" cy="19" r="4.5" fill="#ffcc33" stroke="#7a4c0c" stroke-width="1.5"/></svg>',
+ '<svg viewBox="0 0 24 24"><path d="M7 3h10l5 6-10 12L2 9Z" fill="#7ddf67" stroke="#1c4a1c" stroke-width="1.5"/><path d="M2 9h20M7 3l5 6 5-6M12 9v12" stroke="#1c4a1c" stroke-width="1" fill="none"/></svg>',
+ '<svg viewBox="0 0 24 24"><path d="M12 2 14.7 8.6 21.5 9.2 16.4 13.8 18 20.5 12 16.8 6 20.5 7.6 13.8 2.5 9.2 9.3 8.6Z" fill="#d95bd0" stroke="#5c1c52" stroke-width="1.5"/></svg>',
+];
+const CAT_ICON = { coin:BR_SVG[0], pad:BR_SVG[1], tube:BR_SVG[2], gen:BR_SVG[4] };
+const PACK_EMB = {
+ common:'<svg viewBox="0 0 24 24"><path d="M12 3 14.6 8.8 21 9.6 16.2 13.9 17.6 20.4 12 17 6.4 20.4 7.8 13.9 3 9.6 9.4 8.8Z" fill="#dfe8f5" stroke="#0d1526" stroke-width="1.6"/></svg>',
+ rare:'<svg viewBox="0 0 24 24"><path d="M12 2 22 12 12 22 2 12Z" fill="#6cc4ff" stroke="#0d1526" stroke-width="1.6"/><path d="M12 6 18 12 12 18 6 12Z" fill="#d0e8ff"/></svg>',
+ epic:'<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9Z" fill="#d95bd0" stroke="#0d1526" stroke-width="1.6"/><path d="M6 3h12l2.6 4H3.4Z" fill="#f2b8ee"/><path d="M12 9v12M7 10l5-1 5 1" stroke="#8e2f86" stroke-width="1.2" fill="none"/></svg>',
+ legend:'<svg viewBox="0 0 24 24"><path d="M3 18 4.5 7 9 11.5 12 4.5 15 11.5 19.5 7 21 18Z" fill="#ffcc33" stroke="#0d1526" stroke-width="1.6"/><rect x="3" y="18" width="18" height="3.4" rx="1" fill="#f0a92c" stroke="#0d1526" stroke-width="1.4"/><circle cx="12" cy="9.5" r="1.6" fill="#fff"/></svg>',
+};
+
+/* ================= КАРТЫ (24) ================= */
+const RAR_COL = ['#9fb0d8','#3aa0ff','#d95bd0','#ffcc33'];
+const CARDS = [
+ {id:'k01',cat:'coin',rar:0,name:{en:'POLISH',ru:'ПОЛИРОВКА'},desc:{en:'+4% coin bounce income / lv',ru:'+4% к доходу отскоков монет / ув'},fx:(s,l)=>s.coinPay*=1+.04*l},
+ {id:'k02',cat:'coin',rar:0,name:{en:'LUCKY DROP',ru:'УДАЧНЫЙ ДРОП'},desc:{en:'+3% extra coin on ADD COIN / lv',ru:'+3% шанс доп. монеты с ADD COIN / ув'},fx:(s,l)=>s.coinDouble+=.03*l},
+ {id:'k03',cat:'pad',rar:0,name:{en:'GRIP TAPE',ru:'СКОТЧ'},desc:{en:'+4% pad income / lv',ru:'+4% к доходу платформ / ув'},fx:(s,l)=>s.padPay*=1+.04*l},
+ {id:'k04',cat:'pad',rar:0,name:{en:'WIDE EDGE',ru:'ШИРОКАЯ КРОМКА'},desc:{en:'+3% pad length / lv',ru:'+3% к длине платформ / ув'},fx:(s,l)=>s.padLen*=1+.03*l},
+ {id:'k05',cat:'tube',rar:0,name:{en:'OILED TUBE',ru:'СМАЗКА'},desc:{en:'-2% auto-drop interval / lv',ru:'-2% к интервалу авто-дропа / ув'},fx:(s,l)=>s.tubeTimeMult*=Math.pow(.98,l)},
+ {id:'k06',cat:'tube',rar:0,name:{en:'SPARE COIN',ru:'ЗАПАСНАЯ МОНЕТА'},desc:{en:'+$2 per auto-drop / lv',ru:'+$2 за авто-дроп / ув'},fx:(s,l)=>s.tubeGift+=2*l},
+ {id:'k07',cat:'gen',rar:0,name:{en:'THRIFT',ru:'ЭКОНОМНОСТЬ'},desc:{en:'-1% all prices / lv',ru:'-1% ко всем ценам / ув'},fx:(s,l)=>s.priceMult*=Math.pow(.99,l)},
+ {id:'k08',cat:'gen',rar:0,name:{en:'START BOOST',ru:'СТАРТОВЫЙ БОСТ'},desc:{en:'+$20 start wallet / lv',ru:'+$20 к стартовому кошельку / ув'},fx:(s,l)=>s.startCash+=20*l},
+ {id:'k09',cat:'coin',rar:1,name:{en:'QUALITY MINT',ru:'КАЧЕСТВЕННАЯ ЧЕКАНКА'},desc:{en:'+4% bought coin tier 2 chance / lv',ru:'+4% шанс номинала 2 у купленной монеты / ув'},fx:(s,l)=>s.coinTierCh+=.04*l},
+ {id:'k10',cat:'coin',rar:1,name:{en:'MERGE BONUS',ru:'БОНУС СЛИЯНИЯ'},desc:{en:'merge pays +3 hits of new coin / lv',ru:'слияние даёт +3 отскока новой монеты / ув'},fx:(s,l)=>s.mergeHits+=3*l},
+ {id:'k11',cat:'pad',rar:1,name:{en:'STRONG SPRINGS',ru:'ТУГИЕ ПРУЖИНЫ'},desc:{en:'+4% pad kick / lv',ru:'+4% к кику платформ / ув'},fx:(s,l)=>s.kickMult*=1+.04*l},
+ {id:'k12',cat:'pad',rar:1,name:{en:'QUICK REBOUND',ru:'БЫСТРЫЙ ОТБОЙ'},desc:{en:'-4% pad hit cooldown / lv',ru:'-4% к кулдауну отскока / ув'},fx:(s,l)=>s.padCd*=Math.pow(.96,l)},
+ {id:'k13',cat:'tube',rar:1,name:{en:'TUBE WARMUP',ru:'ПРОГРЕВ ТРУБЫ'},desc:{en:'+5% tube coin tier 2 chance / lv',ru:'+5% шанс номинала 2 у монеты из трубы / ув'},fx:(s,l)=>s.tubeTierCh+=.05*l},
+ {id:'k14',cat:'gen',rar:1,name:{en:'CRIT CHANCE',ru:'ШАНС КРИТА'},desc:{en:'+1.5% crit chance / lv',ru:'+1.5% к шансу крита / ув'},fx:(s,l)=>s.critCh+=.015*l},
+ {id:'k15',cat:'coin',rar:2,name:{en:'COIN FUSION',ru:'МОНЕТНЫЙ СПЛАВ'},desc:{en:'+5% merge +1 extra tier chance / lv',ru:'+5% шанс +1 номинал при слиянии / ув'},fx:(s,l)=>s.mergeTierCh+=.05*l},
+ {id:'k16',cat:'coin',rar:2,name:{en:'TREASURE COINS',ru:'СОКРОВИЩЕ'},desc:{en:'+0.2% blue crystal per paid hit / lv',ru:'+0.2% синий кристалл с платного отскока / ув'},fx:(s,l)=>s.blueLuck+=.002*l},
+ {id:'k17',cat:'pad',rar:2,name:{en:'WALL ECHO',ru:'ЭХО СТЕН'},desc:{en:'walls pay +3% of coin income / lv',ru:'стены платят +3% дохода монеты / ув'},fx:(s,l)=>s.wallPay=Math.max(s.wallPay,.03*l)},
+ {id:'k18',cat:'pad',rar:2,name:{en:'PAD OVERDRIVE',ru:'ОВЕРДРАЙВ'},desc:{en:'+8% pad income / lv',ru:'+8% к доходу платформ / ув'},fx:(s,l)=>s.padPay*=1+.08*l},
+ {id:'k19',cat:'tube',rar:2,name:{en:'OVERFLOW VALVE',ru:'КЛАПАН'},desc:{en:'+$15 overflow payout / lv',ru:'+$15 к выплате переполнения / ув'},fx:(s,l)=>s.overflowCash+=15*l},
+ {id:'k20',cat:'gen',rar:2,name:{en:'SUPPLY CONTRACT',ru:'КОНТРАКТ'},desc:{en:'-2% price growth of all buttons / lv',ru:'-2% к росту цен всех кнопок / ув'},fx:(s,l)=>s.growthAll+=.02*l},
+ {id:'k21',cat:'coin',rar:3,name:{en:'MIDAS TOUCH',ru:'КАСАНИЕ МИДАСА'},desc:{en:'+10% ALL income / lv',ru:'+10% КО ВСЕМУ доходу / ув'},fx:(s,l)=>s.incMult*=1+.10*l},
+ {id:'k22',cat:'pad',rar:3,name:{en:'PINBALL WIZARD',ru:'ПИНБОЛ-МАСТЕР'},desc:{en:'+10% pad income, +5% kick / lv',ru:'+10% доход платформ, +5% кик / ув'},fx:(s,l)=>{s.padPay*=1+.10*l; s.kickMult*=1+.05*l;}},
+ {id:'k23',cat:'tube',rar:3,name:{en:'TUBE SINGULARITY',ru:'СИНГУЛЯРНОСТЬ ТРУБЫ'},desc:{en:'-6% interval, +$4 gift / lv',ru:'-6% интервал, +$4 подарок / ув'},fx:(s,l)=>{s.tubeTimeMult*=Math.pow(.94,l); s.tubeGift+=4*l;}},
+ {id:'k24',cat:'gen',rar:3,name:{en:'CRYSTAL BONANZA',ru:'КРИСТАЛЬНЫЙ КУШ'},desc:{en:'+1 red & +5 blue per level clear / lv',ru:'+1 красный и +5 синих за уровень / ув'},fx:(s,l)=>{s.redBonus+=1*l; s.blueBonus+=5*l;}},
+];
+const CARD_BY_ID = {}; CARDS.forEach(c=>CARD_BY_ID[c.id]=c);
+const cardLevel = copies => Math.min(5, 1+Math.floor((copies-1)/3));
+const PACKS = {
+ common:{ cost:10, cards:1, odds:[.80,.15,.04,.01] },
+ rare:  { cost:40, cards:3, odds:[.45,.38,.13,.04] },
+ epic:  { cost:100,cards:5, odds:[.15,.40,.33,.12] },
+ legend:{ cost:150,cards:7, odds:[.00,.30,.45,.25] },
+};
+let CARD_OWN = {}, PACK_INV = { common:0, rare:0, epic:0, legend:0 };
+
+/* ================= ДРЕВО НАВЫКОВ (50) ================= */
+const SKILLS = [
+ {id:'A1',b:0,row:0,name:{en:'COIN LUCK I',ru:'УДАЧА МОНЕТ I'},desc:{en:'ADD COIN: +10% chance to drop an extra coin',ru:'ADD COIN: +10% шанс упасть дополнительной монетой'},cost:1,req:null,fx:s=>s.coinDouble+=.10},
+ {id:'A2',b:0,row:1,name:{en:'COIN LUCK II',ru:'УДАЧА МОНЕТ II'},desc:{en:'Extra coin chance +10% (20% total)',ru:'Шанс доп. монеты +10% (всего 20%)'},cost:2,req:'A1',fx:s=>s.coinDouble+=.10},
+ {id:'A3',b:0,row:2,name:{en:'COIN LUCK III',ru:'УДАЧА МОНЕТ III'},desc:{en:'Extra coin chance +15% (35% total)',ru:'Шанс доп. монеты +15% (всего 35%)'},cost:4,req:'A2',fx:s=>s.coinDouble+=.15},
+ {id:'A4',b:0,row:3,name:{en:'QUALITY COINS I',ru:'КАЧЕСТВО МОНЕТ I'},desc:{en:'Bought coin: 10% chance to be tier 2',ru:'Купленная монета: 10% шанс номинала 2'},cost:3,req:'A2',fx:s=>s.coinTierCh+=.10},
+ {id:'A5',b:0,row:4,name:{en:'QUALITY COINS II',ru:'КАЧЕСТВО МОНЕТ II'},desc:{en:'Tier 2 chance 25% total',ru:'Шанс номинала 2 всего 25%'},cost:5,req:'A4',fx:s=>s.coinTierCh+=.15},
+ {id:'A6',b:0,row:5,name:{en:'COIN CAP I',ru:'ВМЕСТИМОСТЬ I'},desc:{en:'MAX COINS +10',ru:'МАКС монет +10'},cost:3,req:'A1',fx:s=>s.maxCoinsAdd+=10},
+ {id:'A7',b:0,row:6,name:{en:'COIN CAP II',ru:'ВМЕСТИМОСТЬ II'},desc:{en:'MAX COINS +15 more',ru:'МАКС монет ещё +15'},cost:6,req:'A6',fx:s=>s.maxCoinsAdd+=15},
+ {id:'A8',b:0,row:7,name:{en:'SOFT WALLS',ru:'МЯГКИЕ СТЕНЫ'},desc:{en:'Wall restitution 0.88 → 0.93 (livelier bounces)',ru:'Упругость стен 0.88 → 0.93 (живее отскоки)'},cost:4,req:'A3',fx:s=>s.restWall=0.93},
+ {id:'A9',b:0,row:8,name:{en:'ENERGY CORE',ru:'ЭНЕРГОЯДРО'},desc:{en:'Pad kick +15%',ru:'Кик платформ +15%'},cost:5,req:'A8',fx:s=>s.kickMult*=1.15},
+ {id:'A10',b:0,row:9,name:{en:'GOLD TOUCH',ru:'ЗОЛОТОЕ КАСАНИЕ'},desc:{en:'Every paid hit +$1',ru:'Каждый платный отскок +$1'},cost:6,req:'A5',fx:s=>s.flatHit+=1},
+ {id:'B1',b:1,row:0,name:{en:'EXTRA PAD',ru:'ДОП. ПЛАТФОРМА'},desc:{en:'Start every level with 2 pads',ru:'Старт каждого уровня с 2 платформами'},cost:2,req:null,fx:s=>s.padStart+=1},
+ {id:'B2',b:1,row:1,name:{en:'PAD GRIP I',ru:'СХВАТ I'},desc:{en:'Pad income +25%',ru:'Доход платформ +25%'},cost:2,req:'B1',fx:s=>s.padPay*=1.25},
+ {id:'B3',b:1,row:2,name:{en:'PAD GRIP II',ru:'СХВАТ II'},desc:{en:'Pad income +50% total',ru:'Доход платформ всего +50%'},cost:4,req:'B2',fx:s=>s.padPay*=1.2},
+ {id:'B4',b:1,row:3,name:{en:'WIDE PADS I',ru:'ШИРОКИЕ ПЛАТФОРМЫ I'},desc:{en:'Pads 25% longer',ru:'Платформы на 25% длиннее'},cost:3,req:'B1',fx:s=>s.padLen*=1.25},
+ {id:'B5',b:1,row:4,name:{en:'WIDE PADS II',ru:'ШИРОКИЕ ПЛАТФОРМЫ II'},desc:{en:'Pads 50% longer total',ru:'Платформы всего на 50% длиннее'},cost:5,req:'B4',fx:s=>s.padLen*=1.2},
+ {id:'B6',b:1,row:5,name:{en:'FAST PADS',ru:'БЫСТРЫЕ ПЛАТФОРМЫ'},desc:{en:'Hit cooldown 0.15s → 0.08s',ru:'Кулдаун отскока 0.15с → 0.08с'},cost:4,req:'B2',fx:s=>s.padCd=0.08},
+ {id:'B7',b:1,row:6,name:{en:'STRONG KICK',ru:'СИЛЬНЫЙ КИК'},desc:{en:'Pad kick +20%',ru:'Кик платформ +20%'},cost:3,req:'B4',fx:s=>s.kickMult*=1.2},
+ {id:'B8',b:1,row:7,name:{en:'WALL PAY I',ru:'СТЕНЫ ПЛАТЯТ I'},desc:{en:'Wall bounces pay 10% of coin income',ru:'Отскоки от стен платят 10% дохода монеты'},cost:5,req:'B3',fx:s=>s.wallPay=Math.max(s.wallPay,.10)},
+ {id:'B9',b:1,row:8,name:{en:'WALL PAY II',ru:'СТЕНЫ ПЛАТЯТ II'},desc:{en:'Wall bounces pay 25%',ru:'Отскоки от стен платят 25%'},cost:8,req:'B8',fx:s=>s.wallPay=.25},
+ {id:'B10',b:1,row:9,name:{en:'COMBO',ru:'КОМБО'},desc:{en:'Pad hits <1s apart: +5% income each, up to +50%',ru:'Отскоки чаще 1с: +5% дохода каждый, до +50%'},cost:7,req:'B6',fx:s=>s.combo=true},
+ {id:'C1',b:2,row:0,name:{en:'TUBE START I',ru:'СТАРТ ТРУБЫ I'},desc:{en:'Tube starts at LV1 every level',ru:'Труба стартует с LV1 каждый уровень'},cost:2,req:null,fx:s=>s.tubeStart+=1},
+ {id:'C2',b:2,row:1,name:{en:'TUBE START II',ru:'СТАРТ ТРУБЫ II'},desc:{en:'Tube starts at LV3',ru:'Труба стартует с LV3'},cost:4,req:'C1',fx:s=>s.tubeStart+=2},
+ {id:'C3',b:2,row:2,name:{en:'FAST TUBE I',ru:'БЫСТРАЯ ТРУБА I'},desc:{en:'Auto-drop interval ×0.9',ru:'Интервал авто-дропа ×0.9'},cost:3,req:'C1',fx:s=>s.tubeTimeMult*=.9},
+ {id:'C4',b:2,row:3,name:{en:'FAST TUBE II',ru:'БЫСТРАЯ ТРУБА II'},desc:{en:'Interval ×0.8 total',ru:'Интервал всего ×0.8'},cost:5,req:'C3',fx:s=>s.tubeTimeMult*=.889},
+ {id:'C5',b:2,row:4,name:{en:'TUBE QUALITY I',ru:'КАЧЕСТВО ТРУБЫ I'},desc:{en:'Tube coin: 10% chance tier 2',ru:'Монета из трубы: 10% шанс номинала 2'},cost:4,req:'C2',fx:s=>s.tubeTierCh+=.10},
+ {id:'C6',b:2,row:5,name:{en:'TUBE QUALITY II',ru:'КАЧЕСТВО ТРУБЫ II'},desc:{en:'Tier 2 chance 25% total',ru:'Шанс номинала 2 всего 25%'},cost:7,req:'C5',fx:s=>s.tubeTierCh+=.15},
+ {id:'C7',b:2,row:6,name:{en:'TUBE GIFT I',ru:'ПОДАРОК ТРУБЫ I'},desc:{en:'Each auto-drop also gives $5',ru:'Каждый авто-дроп даёт +$5'},cost:3,req:'C1',fx:s=>s.tubeGift+=5},
+ {id:'C8',b:2,row:7,name:{en:'TUBE GIFT II',ru:'ПОДАРОК ТРУБЫ II'},desc:{en:'Auto-drop gift $25 total',ru:'Подарок авто-дропа всего $25'},cost:6,req:'C7',fx:s=>s.tubeGift+=20},
+ {id:'C9',b:2,row:8,name:{en:'OVERFLOW',ru:'ПЕРЕПОЛНЕНИЕ'},desc:{en:'Vessel full: auto-drop gives $50 instead of waiting',ru:'Полное поле: авто-дроп даёт $50 вместо ожидания'},cost:5,req:'C4',fx:s=>s.overflowCash+=50},
+ {id:'C10',b:2,row:9,name:{en:'TUBE MASTER',ru:'МАСТЕР ТРУБЫ'},desc:{en:'Tube permanently +5 LV',ru:'Труба навсегда +5 LV'},cost:9,req:'C6',fx:s=>s.tubeMaster+=5},
+ {id:'D1',b:3,row:0,name:{en:'START CASH I',ru:'СТАРТОВЫЙ КЭШ I'},desc:{en:'Start wallet +$50',ru:'Стартовый кошелёк +$50'},cost:1,req:null,fx:s=>s.startCash+=50},
+ {id:'D2',b:3,row:1,name:{en:'START CASH II',ru:'СТАРТОВЫЙ КЭШ II'},desc:{en:'Start wallet +$150 total',ru:'Стартовый кошелёк всего +$150'},cost:3,req:'D1',fx:s=>s.startCash+=100},
+ {id:'D3',b:3,row:2,name:{en:'CHEAP COINS',ru:'ДЕШЁВЫЕ МОНЕТЫ'},desc:{en:'ADD COIN price growth 1.35 → 1.25',ru:'Рост цены ADD COIN 1.35 → 1.25'},cost:2,req:'D1',fx:s=>s.growthRed.coin+=.10},
+ {id:'D4',b:3,row:3,name:{en:'CHEAP PADS',ru:'ДЕШЁВЫЕ ПЛАТФОРМЫ'},desc:{en:'ADD PAD price growth 2.0 → 1.8',ru:'Рост цены ADD PAD 2.0 → 1.8'},cost:3,req:'D3',fx:s=>s.growthRed.pad+=.2},
+ {id:'D5',b:3,row:4,name:{en:'CHEAP MERGE',ru:'ДЕШЁВОЕ СЛИЯНИЕ'},desc:{en:'MERGE price growth 1.7 → 1.5',ru:'Рост цены MERGE 1.7 → 1.5'},cost:2,req:'D1',fx:s=>s.growthRed.merge+=.2},
+ {id:'D6',b:3,row:5,name:{en:'CHEAP TUBE',ru:'ДЕШЁВАЯ ТРУБА'},desc:{en:'TUBE price growth 1.45 → 1.35',ru:'Рост цены TUBE 1.45 → 1.35'},cost:3,req:'D5',fx:s=>s.growthRed.tube+=.10},
+ {id:'D7',b:3,row:6,name:{en:'DISCOUNT I',ru:'СКИДКА I'},desc:{en:'All prices −10%',ru:'Все цены −10%'},cost:4,req:'D2',fx:s=>s.priceMult*=.9},
+ {id:'D8',b:3,row:7,name:{en:'DISCOUNT II',ru:'СКИДКА II'},desc:{en:'All prices −25% total',ru:'Все цены всего −25%'},cost:7,req:'D7',fx:s=>s.priceMult*=.8333},
+ {id:'D9',b:3,row:8,name:{en:'RED VEIN',ru:'КРАСНАЯ ЖИЛА'},desc:{en:'+1 red crystal per level completed',ru:'+1 красный кристалл за пройденный уровень'},cost:5,req:'D2',fx:s=>s.redBonus+=1},
+ {id:'D10',b:3,row:9,name:{en:'BLUE VEIN',ru:'СИНЯЯ ЖИЛА'},desc:{en:'+5 blue crystals per level completed',ru:'+5 синих кристаллов за пройденный уровень'},cost:5,req:'D9',fx:s=>s.blueBonus+=5},
+ {id:'E1',b:4,row:0,name:{en:'LUCKY HAND',ru:'УДАЧЛИВАЯ РУКА'},desc:{en:'Merge price −30%',ru:'Цена слияния −30%'},cost:1,req:null,fx:s=>s.mergeCostMult*=.7},
+ {id:'E2',b:4,row:1,name:{en:'CRIT I',ru:'КРИТ I'},desc:{en:'5% chance pad hit pays ×10',ru:'5% шанс: отскок платит ×10'},cost:3,req:'E1',fx:s=>s.critCh+=.05},
+ {id:'E3',b:4,row:2,name:{en:'CRIT II',ru:'КРИТ II'},desc:{en:'Crit chance 10% total',ru:'Шанс крита всего 10%'},cost:6,req:'E2',fx:s=>s.critCh+=.05},
+ {id:'E4',b:4,row:3,name:{en:'MERGE CASH I',ru:'КЭШ ЗА СЛИЯНИЕ I'},desc:{en:'Merge instantly pays $ = 10 hits of the new coin',ru:'Слияние сразу даёт $ = 10 отскоков новой монеты'},cost:3,req:'E1',fx:s=>s.mergeHits+=10},
+ {id:'E5',b:4,row:4,name:{en:'MERGE CASH II',ru:'КЭШ ЗА СЛИЯНИЕ II'},desc:{en:'Merge pays 25 hits',ru:'Слияние даёт 25 отскоков'},cost:6,req:'E4',fx:s=>s.mergeHits+=15},
+ {id:'E6',b:4,row:5,name:{en:'MERGE LUCK I',ru:'УДАЧА СЛИЯНИЯ I'},desc:{en:'10% chance merge result gets +1 extra tier',ru:'10% шанс: результат слияния +1 номинал'},cost:5,req:'E4',fx:s=>s.mergeTierCh+=.10},
+ {id:'E7',b:4,row:6,name:{en:'MERGE LUCK II',ru:'УДАЧА СЛИЯНИЯ II'},desc:{en:'Extra tier chance 25%',ru:'Шанс доп. номинала 25%'},cost:8,req:'E6',fx:s=>s.mergeTierCh+=.15},
+ {id:'E8',b:4,row:7,name:{en:'BLUE LUCK',ru:'СИНЯЯ УДАЧА'},desc:{en:'0.5% chance per paid hit: +1 blue crystal',ru:'0.5% за платный отскок: +1 синий кристалл'},cost:5,req:'E3',fx:s=>s.blueLuck+=.005},
+ {id:'E9',b:4,row:8,name:{en:'SAFETY NET',ru:'СТРАХОВКА'},desc:{en:'Bailout (broke with 0 coins) gives 3 coins worth',ru:'Спасение (банкротство) даёт денег на 3 монеты'},cost:3,req:'E1',fx:s=>s.bailCoins=3},
+ {id:'E10',b:4,row:9,name:{en:'FORTUNE',ru:'ФОРТУНА'},desc:{en:'ALL income +10%',ru:'ВЕСЬ доход +10%'},cost:8,req:'E5',fx:s=>s.incMult*=1.1},
+];
+const SKILL_BY_ID = {}; SKILLS.forEach(s=>SKILL_BY_ID[s.id]=s);
+let OWNED = new Set(), ST = null;
+function calcStats(){
+  const s = { coinDouble:0, coinTierCh:0, maxCoinsAdd:0, restWall:REST_WALL, kickMult:1, flatHit:0,
+    padStart:0, padPay:1, padLen:1, padCd:0.15, wallPay:0, combo:false,
+    tubeStart:0, tubeTimeMult:1, tubeTierCh:0, tubeGift:0, overflowCash:0, tubeMaster:0,
+    startCash:0, growthRed:{coin:0,pad:0,merge:0,tube:0}, growthAll:0, priceMult:1, redBonus:0, blueBonus:0,
+    mergeCostMult:1, mergeHits:0, mergeTierCh:0, mergeRefund:0, critCh:0, blueLuck:0, bailCoins:1, incMult:1, coinPay:1 };
+  for (const id of OWNED) SKILL_BY_ID[id].fx(s);
+  for (const id in CARD_OWN){ const c=CARD_BY_ID[id]; if (c) c.fx(s, cardLevel(CARD_OWN[id])); }
+  return s;
+}
+const refreshStats = () => { ST = calcStats(); };
+const nodePos = sk => [ 90 + sk.b*200 + (sk.row%2 ? 55 : -55), 70 + sk.row*115 ];
+
+/* ================= ЁМКОСТИ ================= */
+const SHAPES = [
+ [[150,200],[90,260],[90,430],[170,520],[370,520],[450,430],[450,260],[390,200]],
+ [[120,210],[70,300],[110,470],[270,530],[430,470],[470,300],[420,210]],
+ [[140,200],[100,290],[250,510],[290,510],[440,290],[400,200]],
+ [[130,190],[90,250],[90,470],[150,530],[390,530],[450,470],[450,250],[410,190]],
+ [[170,200],[80,340],[80,490],[460,490],[460,340],[370,200]],
+ [[150,210],[90,350],[170,510],[370,510],[450,350],[390,210]],
+ [[200,195],[110,260],[110,500],[430,500],[430,260],[340,195]],
+ [[140,200],[90,280],[80,380],[110,470],[190,530],[350,530],[430,470],[460,380],[450,280],[400,200]],
+ [[130,200],[200,300],[200,360],[110,450],[110,520],[430,520],[430,450],[340,360],[340,300],[410,200]],
+ [[140,200],[90,300],[90,520],[200,520],[270,430],[340,520],[450,520],[450,300],[400,200]],
+ [[160,200],[100,270],[160,340],[100,410],[160,480],[200,530],[380,530],[450,440],[450,260],[390,200]],
+ [[180,200],[120,300],[160,500],[300,540],[440,480],[420,280],[360,200]],
+ [[130,200],[80,280],[80,400],[150,400],[150,480],[220,480],[220,540],[320,540],[320,480],[390,480],[390,400],[460,400],[460,280],[410,200]],
+ [[150,200],[90,300],[110,440],[270,560],[430,440],[450,300],[390,200]],
+ [[160,195],[90,240],[90,480],[140,530],[400,530],[450,480],[450,240],[380,195]],
+ [[140,200],[90,320],[130,500],[200,520],[270,460],[340,520],[410,500],[450,320],[400,200]],
+ [[210,190],[190,300],[120,420],[120,520],[420,520],[420,420],[350,300],[330,190]],
+ [[150,200],[80,340],[140,520],[360,540],[460,420],[440,260],[380,200]],
+ [[150,200],[110,260],[150,330],[80,400],[120,510],[270,540],[420,510],[460,400],[390,330],[430,260],[390,200]],
+ [[140,200],[90,300],[90,510],[160,540],[215,495],[270,540],[325,495],[380,540],[450,510],[450,300],[400,200]],
+];
+function levelCfg(l){
+  const pts = SHAPES[(l-1) % SHAPES.length];
+  const cx = pts.reduce((a,p)=>a+p[0],0)/pts.length, cy = pts.reduce((a,p)=>a+p[1],0)/pts.length;
+  const x0=pts[0][0], y0=pts[0][1], x1=pts[pts.length-1][0], y1=pts[pts.length-1][1];
+  const ceilY = y0-60;
+  const walls = [];
+  for (let i=0;i<pts.length-1;i++) walls.push([...pts[i], ...pts[i+1]]);
+  walls.push([x0,ceilY,x0,y0]);
+  walls.push([x1,ceilY,x1,y1]);
+  walls.push([x0,ceilY,x1,ceilY]);
+  const poly = [[x0,ceilY], ...pts, [x1,ceilY]];
+  const slots = [];
+  for (let i=0;i<pts.length-1;i++){
+    const a=pts[i], b=pts[i+1];
+    const Lg=Math.hypot(b[0]-a[0], b[1]-a[1]);
+    const pieces = Lg>=260?3 : Lg>=150?2 : 1;
+    for (let k=0;k<pieces;k++) slots.push([i, k/pieces, (k+1)/pieces]);
+  }
+  const midOf = s => { const a=pts[s[0]], b=pts[s[0]+1], f=(s[1]+s[2])/2;
+    return [ a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f ]; };
+  slots.sort((s1,s2)=>{ const m1=midOf(s1), m2=midOf(s2);
+    return (m2[1]-m1[1]) || (m1[0]-m2[0]); });
+  const padsDef = slots.map(([si,f0,f1])=>{
+    const a=pts[si], b=pts[si+1];
+    let dx=b[0]-a[0], dy=b[1]-a[1]; const Lg=Math.hypot(dx,dy); dx/=Lg; dy/=Lg;
+    let nx=-dy, ny=dx;
+    const p0=[a[0]+(b[0]-a[0])*f0, a[1]+(b[1]-a[1])*f0], p1=[a[0]+(b[0]-a[0])*f1, a[1]+(b[1]-a[1])*f1];
+    const mx=(p0[0]+p1[0])/2, my=(p0[1]+p1[1])/2;
+    if (nx*(cx-mx)+ny*(cy-my) < 0){ nx=-nx; ny=-ny; }
+    const ang=Math.atan2(dy,dx);
+    const sign = (nx*-Math.sin(ang)+ny*Math.cos(ang)) > 0 ? 1 : -1;
+    return { ax:p0[0]+nx*PAD_T, ay:p0[1]+ny*PAD_T, bx:p1[0]+nx*PAD_T, by:p1[1]+ny*PAD_T,
+             nx, ny, tx:dx, ty:dy, ang, len:Lg*(f1-f0), sign };
+  });
+  return { pts, walls, pads:padsDef, poly, ceilY, goal: GOAL_BASE*Math.pow(GOAL_MULT, l-1),
+           bg: ((l*2654435761)>>>0) % 6 };
+}
+const rngFactory = seed => { let t=seed>>>0; return ()=>{ t+=0x6D2B79F5;
+  let r=Math.imul(t^t>>>15,1|t); r^=r+Math.imul(r^r>>>7,61|r); return ((r^r>>>14)>>>0)/4294967296; }; };
+
+/* ================= СОСТОЯНИЕ ================= */
+let S=null, CFG=null, particles=[], floats=[], muted=false, musicOn=true;
+let RED=0, BLUE=0;
+let padGlow=[], shake=0, flash=0;
+let dust=[];
+for (let i=0;i<26;i++) dust.push({x:Math.random()*900,y:Math.random()*H,s:.6+Math.random()*1.7,v:7+Math.random()*15,ph:Math.random()*6});
+function freshLevelState(level){ CFG=levelCfg(level); padGlow=[];
+  return { level, wallet:START_WALLET+ST.startCash, earned:0, cb:0, pb:0, mb:0,
+           coins:[], won:false, tube:0, tubeT:0, buffX2:0, sale:false, turbo:false, comboN:0, comboT:0 }; }
+const maxCoins = () => MAX_COINS_BASE + ST.maxCoinsAdd;
+const priceMult = () => ST.priceMult * (S.sale?0.5:1);
+const cost = k => Math.floor(COST[k][0]*Math.pow(Math.max(1.05,COST[k][1]-ST.growthRed[k]-ST.growthAll), S[{coin:'cb',pad:'pb',merge:'mb'}[k]]) * priceMult());
+const tubeCost = () => Math.floor(TUBE.base*Math.pow(Math.max(1.05,TUBE.mult-ST.growthRed.tube-ST.growthAll), S.tube) * priceMult());
+const mergePrice = () => Math.floor(cost('merge')*ST.mergeCostMult);
+const tubeInterval = t => t<=0 ? Infinity : Math.max(TUBE.min, TUBE.t0 - TUBE.step*(t-1)) * ST.tubeTimeMult;
+const effTube = () => S.tube + (S.turbo?5:0) + ST.tubeStart + ST.tubeMaster;
+const incBaseMult = () => ST.incMult * (S.buffX2>0?2:1);
+const tierColor = t => TIER_COLORS[(t-1)%TIER_COLORS.length];
+const tierInc = t => HIT_BASE*Math.pow(MERGE_MULT, t-1);
+const tierR = t => 12+Math.min(t,6);
+const pads = () => CFG.pads.slice(0, 1+S.pb+ST.padStart).map(p=>{
+  if (ST.padLen===1) return p;
+  const cx=(p.ax+p.bx)/2, cy=(p.ay+p.by)/2, hx=(p.bx-p.ax)/2*ST.padLen, hy=(p.by-p.ay)/2*ST.padLen;
+  return Object.assign({}, p, { ax:cx-hx, ay:cy-hy, bx:cx+hx, by:cy+hy, len:p.len*ST.padLen }); });
+function insideVessel(x,y){
+  const P=CFG.poly; let inside=false;
+  for (let i=0,j=P.length-1;i<P.length;j=i++){
+    const xi=P[i][0], yi=P[i][1], xj=P[j][0], yj=P[j][1];
+    if (((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+const tubeSpawn = () => ({ x:270+(Math.random()*12-6), y:CFG.ceilY+26, vx:Math.random()*80-40, vy:60 });
+
+/* ================= ФИЗИКА ================= */
+function spawnCoin(tier=1){ const p=tubeSpawn(); S.coins.push({ ...p, tier, cd:{}, st:0, wt:0, sq:0, spin:Math.random()*6, trail:[] }); }
+function collideSeg(c, seg, rest){
+  const [ax,ay,bx,by]=seg, dx=bx-ax, dy=by-ay, L2=dx*dx+dy*dy;
+  let t=L2?((c.x-ax)*dx+(c.y-ay)*dy)/L2:0; t=Math.max(0,Math.min(1,t));
+  const px=ax+dx*t, py=ay+dy*t;
+  let nx=c.x-px, ny=c.y-py, d=Math.hypot(nx,ny);
+  const r=tierR(c.tier);
+  if (d>=r) return null;
+  if (d<0.0001){ nx=0; ny=-1; d=1; }
+  nx/=d; ny/=d;
+  c.x=px+nx*r; c.y=py+ny*r;
+  const vn=c.vx*nx+c.vy*ny;
+  if (vn<0){ c.vx-=(1+rest)*vn*nx; c.vy-=(1+rest)*vn*ny; return -vn; }
+  return 0;
+}
+function payHit(c, base, isPad, padIdx){
+  const now=performance.now()/1000;
+  let comboMult=1;
+  if (isPad && ST.combo){
+    S.comboN = (now - S.comboT < 1) ? S.comboN+1 : 1; S.comboT=now;
+    comboMult = 1 + Math.min(S.comboN,10)*0.05;
+  }
+  const crit = isPad && Math.random()<ST.critCh;
+  let inc = base*ST.coinPay*incBaseMult()*comboMult*(crit?10:1);
+  if (isPad) inc = inc*ST.padPay + ST.flatHit;
+  S.wallet+=inc; S.earned+=inc;
+  c.sq=1;
+  if (isPad && padIdx!==undefined) padGlow[padIdx]=now;
+  floats.push({x:c.x,y:c.y-18,t:0,col:crit?'#ff5566':'#7dff8a',txt:(crit?L('crit')+' +$':'+$')+fmt(inc)});
+  for (let k=0;k<6;k++) particles.push({x:c.x,y:c.y,vx:Math.random()*240-120,vy:-Math.random()*200,t:0,col:crit?'#ff5566':'#ffcc33',r:2+Math.random()*2});
+  if (crit){ particles.push({x:c.x,y:c.y,vx:0,vy:0,t:0,col:'#ff5566',ring:true,r:6}); shake=7; }
+  if (isPad && Math.random()<ST.blueLuck){ BLUE++; floats.push({x:c.x,y:c.y-34,t:0,col:'#6cc4ff',txt:'+1',gem:'blue'}); }
+  sHit(c.tier);
+}
+function step(dt){
+  if (adPaused || pagePaused) return;
+  const et = effTube();
+  if (et>=1 && !S.won){
+    S.tubeT += dt;
+    const iv = tubeInterval(et);
+    if (S.tubeT >= iv){
+      if (S.coins.length < maxCoins()){
+        spawnCoin(Math.random()<ST.tubeTierCh?2:1);
+        particles.push({x:270,y:CFG.ceilY+8,vx:0,vy:0,t:0,col:'#7dff8a',ring:true,r:4});
+        if (ST.tubeGift>0){ const g=ST.tubeGift*incBaseMult(); S.wallet+=g; S.earned+=g; }
+        tone(620,.06,'triangle',.06); S.tubeT = 0;
+      } else if (ST.overflowCash>0){ const g=ST.overflowCash*incBaseMult(); S.wallet+=g; S.earned+=g; S.tubeT=0; }
+      else S.tubeT = iv;
+    }
+  }
+  if (S.buffX2>0 && !S.won) S.buffX2=Math.max(0,S.buffX2-dt);
+  const sub=4, h=dt/sub;
+  for (let s=0;s<sub;s++){
+    for (const c of S.coins){
+      c.vy+=GRAV*h;
+      const sp=Math.hypot(c.vx,c.vy);
+      if (sp>MAXV){ c.vx*=MAXV/sp; c.vy*=MAXV/sp; }
+      c.x+=c.vx*h; c.y+=c.vy*h;
+      c.spin=(c.spin||0)+h*(2.2+sp/420);
+      c.sq=Math.max(0,(c.sq||0)-h*5);
+      for (const wseg of CFG.walls){
+        const imp=collideSeg(c, wseg, ST.restWall);
+        if (imp>0){ c.sq=Math.max(c.sq,.6);
+          if (ST.wallPay>0){
+            const now=performance.now()/1000;
+            if (!c.wt || now-c.wt>0.2){ c.wt=now;
+              const inc=tierInc(c.tier)*ST.wallPay*ST.coinPay*incBaseMult();
+              S.wallet+=inc; S.earned+=inc;
+              floats.push({x:c.x,y:c.y-14,t:0,col:'#6cc4ff',txt:'+$'+fmt(inc)}); }
+          }
+        }
+      }
+      pads().forEach((p,i)=>{
+        if (collideSeg(c,[p.ax,p.ay,p.bx,p.by],0.85) !== null){
+          const vn=c.vx*p.nx+c.vy*p.ny;
+          const kk=KICK*ST.kickMult;
+          if (vn<kk){ c.vx+=(kk-vn)*p.nx; c.vy+=(kk-vn)*p.ny; }
+          c.vx+=p.tx*(Math.random()*80-40); c.vy+=p.ty*(Math.random()*80-40);
+          const now=performance.now()/1000;
+          if (!c.cd[i]||now-c.cd[i]>ST.padCd){ c.cd[i]=now; payHit(c, tierInc(c.tier), true, i); }
+        }
+      });
+      if (Math.hypot(c.vx,c.vy)<20) c.st+=h; else c.st=0;
+      if (c.st>1.2){ c.st=0; c.vy=-(250+Math.random()*170); c.vx=Math.random()*300-150; }
+    }
+    for (let i=0;i<S.coins.length;i++) for (let j=i+1;j<S.coins.length;j++){
+      const a=S.coins[i], b=S.coins[j];
+      let nx=b.x-a.x, ny=b.y-a.y, d=Math.hypot(nx,ny), rr=tierR(a.tier)+tierR(b.tier);
+      if (d<rr&&d>0.0001){
+        nx/=d; ny/=d; const push=(rr-d)/2;
+        a.x-=nx*push; a.y-=ny*push; b.x+=nx*push; b.y+=ny*push;
+        const rel=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;
+        if (rel<0){ const imp=-(1+REST_COIN)*rel/2; a.vx-=imp*nx; a.vy-=imp*ny; b.vx+=imp*nx; b.vy+=imp*ny; }
+      }
+    }
+  }
+  for (const c of S.coins){
+    if (!insideVessel(c.x,c.y)){ Object.assign(c, tubeSpawn()); c.trail.length=0; }
+    c.trail.push([c.x,c.y]); if (c.trail.length>8) c.trail.shift();
+  }
+}
+
+/* ================= ПОКУПКИ ================= */
+function buyCoin(){ const p=cost('coin'); if (S.won||S.wallet<p||S.coins.length>=maxCoins()) return;
+  S.wallet-=p; S.cb++;
+  let n=1; if (Math.random()<ST.coinDouble) n++;
+  for (let k=0;k<n && S.coins.length<maxCoins();k++) spawnCoin(Math.random()<ST.coinTierCh?2:1);
+  sBuy(); save(); }
+function buyPad(){ const p=cost('pad'); if (S.won||S.wallet<p||1+S.pb+ST.padStart>=CFG.pads.length) return;
+  S.wallet-=p; S.pb++; sBuy(); save(); }
+function buyMerge(){ const p=mergePrice(); if (S.won||S.wallet<p) return;
+  const byTier={}; S.coins.forEach((c,i)=>(byTier[c.tier] ??= []).push(i));
+  const pair=Object.keys(byTier).map(Number).sort((a,b)=>a-b).map(t=>byTier[t]).find(a=>a.length>=2);
+  if (!pair) return;
+  S.wallet-=p; S.mb++;
+  if (Math.random()<ST.mergeRefund) S.wallet+=p;
+  const [i,j]=pair, a=S.coins[i], b=S.coins[j];
+  const mx=(a.x+b.x)/2, my=(a.y+b.y)/2;
+  const safe = insideVessel(mx,my);
+  const sp = safe ? {x:mx,y:my} : tubeSpawn();
+  let tier=a.tier+1; if (Math.random()<ST.mergeTierCh) tier++;
+  const nc={ x:sp.x, y:sp.y, vx:safe?(a.vx+b.vx)/2:(Math.random()*80-40),
+    vy:safe?Math.min((a.vy+b.vy)/2,-150):60, tier, cd:{}, st:0, wt:0, sq:0, spin:0, trail:[] };
+  S.coins=S.coins.filter((_,k)=>k!==i&&k!==j); S.coins.push(nc);
+  particles.push({x:nc.x,y:nc.y,vx:0,vy:0,t:0,col:tierColor(tier),ring:true,r:6});
+  shake=Math.max(shake,4);
+  if (ST.mergeHits>0){ const g=tierInc(tier)*ST.mergeHits*ST.coinPay*incBaseMult(); S.wallet+=g; S.earned+=g;
+    floats.push({x:nc.x,y:nc.y-20,t:0,col:'#7dff8a',txt:'+$'+fmt(g)}); }
+  for (let k=0;k<14;k++) particles.push({x:nc.x,y:nc.y,vx:Math.random()*320-160,vy:Math.random()*-260,t:0,col:tierColor(tier),r:2+Math.random()*2});
+  sMerge(); save(); }
+function buyTube(){ const p=tubeCost(); if (S.won||S.tube>=TUBE.max||S.wallet<p) return;
+  S.wallet-=p; S.tube++; sBuy(); save(); }
+function buyNode(id){ const sk=SKILL_BY_ID[id];
+  if (!sk || OWNED.has(id)) return;
+  if (sk.req && !OWNED.has(sk.req)) return;
+  if (RED<sk.cost) return;
+  RED-=sk.cost; OWNED.add(id); refreshStats(); updateTree(); sBuy(); save(); }
+function nextLevel(){ S=freshLevelState(S.level+1); particles=[]; floats=[]; flash=1;
+  document.getElementById('overlay').classList.remove('show'); sWin(); save(); }
+
+/* ================= REWARDED КНОПКИ ================= */
+function updateRwButtons(){
+  document.getElementById('rwRow').classList.remove('hide');
