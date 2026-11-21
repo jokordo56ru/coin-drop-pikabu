@@ -466,7 +466,7 @@ window.addEventListener('error', function(e){
 'use strict';
 /* ================= SDK PIKABU ================= */
 let SDK=null, sdkReady=false, adPaused=false, pagePaused=document.hidden;
-let fullscreenElapsed=0, fullscreenRequesting=false, sdkInitFailed=false;
+let fullscreenElapsed=0, fullscreenRequesting=false, fullscreenRetryDelay=0, sdkInitFailed=false;
 const CLOUD_SAVE_KEY='coindrop_v2';
 function loadSDK(){
   try{
@@ -530,17 +530,11 @@ async function showFullscreenAd(){
     if (!can) return false;
     pauseForAd();
     const r=await SDK.ads.fullscreen.show();
-    if(r && r.rendered===true){ fullscreenElapsed=0; return true; }
+    if(r && r.rendered===true){ fullscreenElapsed=0; fullscreenRetryDelay=0; return true; }
     console.warn('Fullscreen ad not rendered:',r?.reason||'UNKNOWN');
     return false;
   }catch(e){ console.warn('Fullscreen ad failed:',e); return false; }
   finally{ resumeAfterAd(); }
-}
-async function maybeShowFullscreenAtBreak(){
-  if(fullscreenRequesting || fullscreenElapsed<120 || !S.won) return false;
-  fullscreenRequesting=true;
-  try{ return await showFullscreenAd(); }
-  finally{ fullscreenRequesting=false; }
 }
 async function showRewardedAd(onReward){
   if (!sdkReady||!SDK||!SDK.ads?.rewarded || SDK.ads.rewarded.isSupported!==true){
@@ -1717,7 +1711,7 @@ function ui(){
     $('winTitle').textContent=L('win_title',{n:S.level});
     $('winText').innerHTML=L('win_earned',{x:fmt(S.earned)})+'<br>+'+rg+' '+GEM.red+' &nbsp; +'+(10+ST.blueBonus)+' '+GEM.blue;
     $('overlay').classList.add('show'); sWin(); updateTree(); save();
-    maybeShowFullscreenAtBreak(); }
+  }
 }
 function toggleLang(){ LANG = LANG==='en' ? 'ru' : 'en'; applyLang(); save(); }
 function toggleMute(){ muted=!muted; $('muteBtn').textContent=muted?'🔇':''; applyLang(); save(); }
@@ -1800,7 +1794,25 @@ let last=performance.now();
 function loop(now){
   const dt=Math.min(.033,(now-last)/1000); last=now;
   try{
-    if(!S.won && curView==='game' && !adPaused && !pagePaused) fullscreenElapsed+=dt;
+    const menuHidden=document.getElementById('menu').classList.contains('hide');
+    const activePlay=menuHidden && curView==='game' && !S.won && !adPaused && !pagePaused;
+    if(activePlay){
+      fullscreenElapsed+=dt;
+      if(fullscreenElapsed>=120){
+        fullscreenRetryDelay=Math.max(0,fullscreenRetryDelay-dt);
+        if(!fullscreenRequesting && fullscreenRetryDelay<=0){
+          fullscreenRequesting=true;
+          showFullscreenAd().then(shown=>{
+            if(!shown) fullscreenRetryDelay=10;
+          }).catch(e=>{
+            console.warn('Timed fullscreen ad request failed:',e);
+            fullscreenRetryDelay=10;
+          }).finally(()=>{
+            fullscreenRequesting=false;
+          });
+        }
+      }
+    }
     step(S.won?dt*.3:dt);
     if (curView==='game') draw(dt);
     ui();
