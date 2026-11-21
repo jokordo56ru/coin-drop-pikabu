@@ -359,7 +359,7 @@ window.addEventListener('error', function(e){
     <span class="rchip blue"><i data-gem="blue"></i><b id="blueN">0</b></span>
     <span id="buffChips"></span>
   </div>
-  <div id="rwRow" class="hide">
+  <div id="rwRow">
     <button class="rwbtn" id="rwX2">▶ ×2 ДОХОД 60с</button>
     <button class="rwbtn" id="rwCash">▶ +10 💎 БЕСПЛАТНО</button>
   </div>
@@ -465,6 +465,7 @@ window.addEventListener('error', function(e){
 'use strict';
 /* ================= SDK PIKABU ================= */
 let SDK=null, sdkReady=false, adPaused=false, pagePaused=document.hidden;
+let fullscreenElapsed=0, fullscreenRequesting=false;
 const CLOUD_SAVE_KEY='coindrop_v2';
 function loadSDK(){
   try{
@@ -519,29 +520,39 @@ async function initSDK(){
     SDK.gameStarted();
     updateRwButtons();
     save();
-  }catch(e){ console.warn('SDK init failed', e); }
+  }catch(e){ console.warn('SDK init failed', e); updateRwButtons(); }
 }
 async function showFullscreenAd(){
-  if (!sdkReady||!SDK||!SDK.ads?.fullscreen) return false;
+  if (!sdkReady||!SDK||!SDK.ads?.fullscreen || SDK.ads.fullscreen.isSupported!==true) return false;
   try{
-    if(SDK.ads.fullscreen.isSupported===false) return false;
     const can=await SDK.ads.fullscreen.canShow();
     if (!can) return false;
     pauseForAd();
     const r=await SDK.ads.fullscreen.show();
-    return !!(r && r.rendered===true);
+    if(r && r.rendered===true){ fullscreenElapsed=0; return true; }
+    console.warn('Fullscreen ad not rendered:',r?.reason||'UNKNOWN');
+    return false;
   }catch(e){ console.warn('Fullscreen ad failed:',e); return false; }
   finally{ resumeAfterAd(); }
 }
+async function maybeShowFullscreenAtBreak(){
+  if(fullscreenRequesting || fullscreenElapsed<120 || !S.won) return false;
+  fullscreenRequesting=true;
+  try{ return await showFullscreenAd(); }
+  finally{ fullscreenRequesting=false; }
+}
 async function showRewardedAd(onReward){
-  if (!sdkReady||!SDK||!SDK.ads?.rewarded) return false;
+  if (!sdkReady||!SDK||!SDK.ads?.rewarded || SDK.ads.rewarded.isSupported!==true){
+    console.warn('Rewarded ad unavailable: SDK not ready or format unsupported');
+    return false;
+  }
   try{
-    if(SDK.ads.rewarded.isSupported===false) return false;
     const can=await SDK.ads.rewarded.canShow();
-    if (!can) return false;
+    if (!can){ console.warn('Rewarded ad cannot be shown now'); return false; }
     pauseForAd();
     const r=await SDK.ads.rewarded.show();
     if (r && r.rendered===true && r.reward===true){ onReward(); save(); return true; }
+    console.warn('Rewarded ad not completed:',r?.reason||'no reward');
     return false;
   }catch(e){ console.warn('Rewarded ad failed:',e); return false; }
   finally{ resumeAfterAd(); }
@@ -997,8 +1008,12 @@ function nextLevel(){ S=freshLevelState(S.level+1); particles=[]; floats=[]; fla
 
 /* ================= REWARDED КНОПКИ ================= */
 function updateRwButtons(){
-  document.getElementById('rwRow').classList.remove('hide');  document.getElementById('rwX2').textContent=L('rw_x2');
-  document.getElementById('rwCash').textContent=L('rw_cash');
+  const row=$('rwRow'), x2=$('rwX2'), cash=$('rwCash');
+  row.classList.remove('hide');
+  const supported=!!(sdkReady && SDK?.ads?.rewarded && SDK.ads.rewarded.isSupported===true);
+  x2.disabled=!supported; cash.disabled=!supported;
+  x2.textContent=supported?L('rw_x2'):(sdkReady?'РЕКЛАМА НЕДОСТУПНА':'ЗАГРУЗКА РЕКЛАМЫ…');
+  cash.textContent=supported?L('rw_cash'):(sdkReady?'РЕКЛАМА НЕДОСТУПНА':'ЗАГРУЗКА РЕКЛАМЫ…');
 }
 document.getElementById('rwX2').onclick=()=>{
   showRewardedAd(()=>{
@@ -1700,7 +1715,7 @@ function ui(){
     $('winTitle').textContent=L('win_title',{n:S.level});
     $('winText').innerHTML=L('win_earned',{x:fmt(S.earned)})+'<br>+'+rg+' '+GEM.red+' &nbsp; +'+(10+ST.blueBonus)+' '+GEM.blue;
     $('overlay').classList.add('show'); sWin(); updateTree(); save();
-    showFullscreenAd(); }
+    maybeShowFullscreenAtBreak(); }
 }
 function toggleLang(){ LANG = LANG==='en' ? 'ru' : 'en'; applyLang(); save(); }
 function toggleMute(){ muted=!muted; $('muteBtn').textContent=muted?'🔇':''; applyLang(); save(); }
@@ -1782,6 +1797,7 @@ let last=performance.now();
 function loop(now){
   const dt=Math.min(.033,(now-last)/1000); last=now;
   try{
+    if(!S.won && curView==='game' && !adPaused && !pagePaused) fullscreenElapsed+=dt;
     step(S.won?dt*.3:dt);
     if (curView==='game') draw(dt);
     ui();
