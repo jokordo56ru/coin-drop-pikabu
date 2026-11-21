@@ -1795,7 +1795,7 @@ function loop(now){
   const dt=Math.min(.033,(now-last)/1000); last=now;
   try{
     const menuHidden=document.getElementById('menu').classList.contains('hide');
-    const activePlay=menuHidden && curView==='game' && !S.won && !adPaused && !pagePaused;
+    const activePlay=menuHidden && !adPaused && !pagePaused;
     if(activePlay){
       fullscreenElapsed+=dt;
       if(fullscreenElapsed>=120){
