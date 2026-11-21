@@ -906,7 +906,8 @@ function levelCfg(l){
   // Stretch the arena's vertical footprint (not the coins) into the 9:16 world.
   // The original 540x720 level coordinates are mapped from y=130 with a 1.5x vertical span.
   const y916 = y => 130 + (y-130)*1.5;
-  const pts = SHAPES[(l-1) % SHAPES.length].map(([x,y])=>[x,y916(y)]);
+  const x916 = x => 270 + (x-270)*1.12;
+  const pts = SHAPES[(l-1) % SHAPES.length].map(([x,y])=>[x916(x),y916(y)]);
   const cx = pts.reduce((a,p)=>a+p[0],0)/pts.length, cy = pts.reduce((a,p)=>a+p[1],0)/pts.length;
   const x0=pts[0][0], y0=pts[0][1], x1=pts[pts.length-1][0], y1=pts[pts.length-1][1];
   const ceilY = y0-90;
