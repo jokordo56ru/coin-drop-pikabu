@@ -66,6 +66,7 @@
     background:linear-gradient(180deg,#6cc4ff,#2f8fe0); box-shadow:0 3px 0 #0d1526, inset 0 2px 0 rgba(255,255,255,.3);
     text-shadow:0 1px 0 #0a2a4a; display:flex; align-items:center; justify-content:center; gap:5px; }
   .rwbtn:active { transform:translateY(3px); box-shadow:0 0 0 #0d1526; }
+  .rwbtn:disabled { opacity:.65; cursor:default; filter:grayscale(.35); }
 
   /* ===== VIEWS ===== */
   #main { flex:1; min-height:0; display:flex; background:#131c30; }
@@ -360,8 +361,8 @@ window.addEventListener('error', function(e){
     <span id="buffChips"></span>
   </div>
   <div id="rwRow">
-    <button class="rwbtn" id="rwX2">▶ ×2 ДОХОД 60с</button>
-    <button class="rwbtn" id="rwCash">▶ +10 💎 БЕСПЛАТНО</button>
+    <button class="rwbtn" id="rwX2" disabled>▶ ×2 ДОХОД 60с</button>
+    <button class="rwbtn" id="rwCash" disabled>▶ +10 💎 БЕСПЛАТНО</button>
   </div>
 
   <div id="main">
@@ -465,7 +466,7 @@ window.addEventListener('error', function(e){
 'use strict';
 /* ================= SDK PIKABU ================= */
 let SDK=null, sdkReady=false, adPaused=false, pagePaused=document.hidden;
-let fullscreenElapsed=0, fullscreenRequesting=false;
+let fullscreenElapsed=0, fullscreenRequesting=false, sdkInitFailed=false;
 const CLOUD_SAVE_KEY='coindrop_v2';
 function loadSDK(){
   try{
@@ -473,7 +474,7 @@ function loadSDK(){
     s.src='https://games.pikabu.ru/sdk/sdk.js';
     s.async=true;
     s.onload=()=>{ initSDK(); };
-    s.onerror=()=>{ console.warn('Pikabu SDK script not loaded (outside platform?)'); };
+    s.onerror=()=>{ sdkInitFailed=true; console.warn('Pikabu SDK script not loaded (outside platform?)'); updateRwButtons(); };
     document.head.appendChild(s);
   }catch(e){ console.warn('SDK load error', e); }
 }
@@ -520,7 +521,7 @@ async function initSDK(){
     SDK.gameStarted();
     updateRwButtons();
     save();
-  }catch(e){ console.warn('SDK init failed', e); updateRwButtons(); }
+  }catch(e){ sdkInitFailed=true; console.warn('SDK init failed', e); updateRwButtons(); }
 }
 async function showFullscreenAd(){
   if (!sdkReady||!SDK||!SDK.ads?.fullscreen || SDK.ads.fullscreen.isSupported!==true) return false;
@@ -1012,8 +1013,9 @@ function updateRwButtons(){
   row.classList.remove('hide');
   const supported=!!(sdkReady && SDK?.ads?.rewarded && SDK.ads.rewarded.isSupported===true);
   x2.disabled=!supported; cash.disabled=!supported;
-  x2.textContent=supported?L('rw_x2'):(sdkReady?'РЕКЛАМА НЕДОСТУПНА':'ЗАГРУЗКА РЕКЛАМЫ…');
-  cash.textContent=supported?L('rw_cash'):(sdkReady?'РЕКЛАМА НЕДОСТУПНА':'ЗАГРУЗКА РЕКЛАМЫ…');
+  const unavailable=sdkInitFailed || (sdkReady && !supported);
+  x2.textContent=supported?L('rw_x2'):(unavailable?'РЕКЛАМА НЕДОСТУПНА':'ЗАГРУЗКА РЕКЛАМЫ…');
+  cash.textContent=supported?L('rw_cash'):(unavailable?'РЕКЛАМА НЕДОСТУПНА':'ЗАГРУЗКА РЕКЛАМЫ…');
 }
 document.getElementById('rwX2').onclick=()=>{
   showRewardedAd(()=>{
@@ -1786,6 +1788,7 @@ try{
   renderTree();
   setZoom(1);
   setView('game');
+  updateRwButtons();
   loadSDK();
 }catch(e){
   const d=document.createElement('div');
