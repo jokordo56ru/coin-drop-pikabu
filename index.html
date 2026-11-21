@@ -406,14 +406,16 @@
   #buffChips { min-width:0; max-width:48%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #rwRow { flex:0 0 auto; min-height:38px; gap:5px; padding:4px 5px; }
   .rwbtn { min-width:0; min-height:29px; padding:4px 3px; font-size:clamp(9px,2.5vw,11px); border-width:2px; }
-  #main { flex:1 1 0; min-height:0; }
-  #viewGame { min-height:0; }
-  #cvWrap { flex:1 1 0; min-height:100px; overflow:hidden; padding:3px 0; }
-  #cvWrap canvas { display:block; max-width:100%; max-height:100%; }
+  #main { flex:1 1 0; min-height:0; min-width:0; }
+  #viewGame { flex:1 1 0; min-height:0; min-width:0; }
+  #cvWrap { position:relative; flex:1 1 0; min-height:0; min-width:0; width:100%; overflow:hidden;
+    display:flex; align-items:center; justify-content:center; padding:0; }
+  #cvWrap canvas { display:block; flex:0 0 auto; max-width:100%; max-height:100%; }
 
   /* True portrait 9:16 playfield: use the whole available scene column. */
-  #cvWrap { width:100%; min-height:0; flex:1 1 0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  #cvWrap canvas { display:block; width:auto; height:auto; max-width:100%; max-height:100%; aspect-ratio:9 / 16; object-fit:contain; }
+  #cvWrap { position:relative; width:100%; min-width:0; min-height:0; flex:1 1 0;
+    display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  #cvWrap canvas { display:block; flex:0 0 auto; max-width:100%; max-height:100%; aspect-ratio:9 / 16; object-fit:contain; }
 
   #shop { flex:0 0 108px; min-height:108px; gap:4px; padding:5px 4px 7px; }
   .card { min-width:0; border-radius:10px; border-width:2px; }
@@ -1464,18 +1466,32 @@ function resize(){
   if (!wrap || wrap.clientWidth<10 || wrap.clientHeight<10) return;
   curRS=Math.min(2, window.devicePixelRatio||1);
   const ww=wrap.clientWidth, wh=wrap.clientHeight;
-  // Keep the original 540x720 logical playfield. Scale the display canvas
-  // uniformly; never change the physics coordinate system or stretch it.
+  // Fit the complete 9:16 scene into the measured playfield without distortion.
   const sc=Math.min(ww/W, wh/H);
-  const cssW=W*sc, cssH=H*sc;
-  cv.style.width=cssW+'px'; cv.style.height=cssH+'px';
-  cv.width=Math.max(1,Math.round(W*curRS));
-  cv.height=Math.max(1,Math.round(H*curRS));
+  if (!Number.isFinite(sc) || sc<=0) return;
+  const cssW=Math.max(1,Math.floor(W*sc));
+  const cssH=Math.max(1,Math.floor(H*sc));
+  cv.style.display='block';
+  cv.style.width=cssW+'px';
+  cv.style.height=cssH+'px';
+  const pixelW=Math.max(1,Math.round(W*curRS));
+  const pixelH=Math.max(1,Math.round(H*curRS));
+  if (cv.width!==pixelW) cv.width=pixelW;
+  if (cv.height!==pixelH) cv.height=pixelH;
   ctx.setTransform(curRS,0,0,curRS,0,0);
   bgLayer=null;
   bgKey='';
 }
-addEventListener('resize', ()=>{ if(curView==='game') resize(); });
+addEventListener('resize', ()=>{ requestAnimationFrame(()=>{ if(curView==='game') resize(); }); });
+addEventListener('orientationchange', ()=>setTimeout(()=>{ if(curView==='game') resize(); },120));
+// Pikabu can reveal the iframe or switch its dimensions after the first layout pass.
+// Observe the actual playfield instead of relying only on the browser window resize.
+if (typeof ResizeObserver!=='undefined'){
+  const cvResizeObserver=new ResizeObserver(()=>{ if(curView==='game') resize(); });
+  cvResizeObserver.observe(document.getElementById('cvWrap'));
+}
+requestAnimationFrame(()=>requestAnimationFrame(resize));
+setTimeout(()=>{ if(curView==='game') resize(); },250);
 const shade=(hex,k)=>{ const n=parseInt(hex.slice(1),16);
   return `rgb(${Math.min(255,(n>>16)*k|0)},${Math.min(255,(((n>>8)&255)*k)|0)},${Math.min(255,((n&255)*k)|0)})`; };
 const mixW=(hex,t)=>{ const n=parseInt(hex.slice(1),16);
