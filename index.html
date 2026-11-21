@@ -381,6 +381,66 @@
     .rwbtn { font-size:clamp(10px, 2vw, 13px); }
   }
 
+
+  /* ===== PORTRAIT-FIRST PIKABU LAYOUT ===== */
+  #app {
+    width:100%;
+    max-width:520px;
+    min-width:0;
+    margin:0 auto;
+    overflow:hidden;
+    border-left:1px solid rgba(143,162,196,.18);
+    border-right:1px solid rgba(143,162,196,.18);
+    background:#131c30;
+  }
+  #hud { flex-wrap:wrap; flex:0 0 auto; gap:5px; padding:6px 7px; }
+  #goalWrap { order:20; flex:1 0 100%; min-width:0; }
+  #goalTitle { font-size:13px; letter-spacing:2px; }
+  #goalBar { max-width:none; height:21px; margin-top:3px; }
+  #goalText { line-height:17px; font-size:11px; }
+  .hbtn { flex:0 0 34px; width:34px; height:34px; }
+  #lvlChip { padding:5px 7px; font-size:11px; }
+  #wallet { flex:1 1 auto; min-width:0; padding:5px 7px; font-size:12px; }
+  #resRow { flex:0 0 auto; min-height:34px; gap:5px; padding:4px 5px; }
+  .rchip { padding:2px 8px; font-size:11px; border-width:2px; }
+  #buffChips { min-width:0; max-width:48%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #rwRow { flex:0 0 auto; min-height:38px; gap:5px; padding:4px 5px; }
+  .rwbtn { min-width:0; min-height:29px; padding:4px 3px; font-size:clamp(9px,2.5vw,11px); border-width:2px; }
+  #main { flex:1 1 0; min-height:0; }
+  #viewGame { min-height:0; }
+  #cvWrap { flex:1 1 0; min-height:100px; overflow:hidden; padding:3px 0; }
+  #cvWrap canvas { display:block; max-width:100%; max-height:100%; }
+  #shop { flex:0 0 108px; min-height:108px; gap:4px; padding:5px 4px 7px; }
+  .card { min-width:0; border-radius:10px; border-width:2px; }
+  .card .cap { min-height:25px; padding:5px 1px; font-size:clamp(8px,2.35vw,11px); letter-spacing:0; }
+  .card .icon { height:29px; }
+  .card .stat { min-height:12px; margin:0 0 3px; font-size:clamp(8px,2vw,10px); white-space:nowrap; }
+  .buy { width:92%; margin:0 auto 5px; padding:5px 1px; font-size:clamp(10px,2.5vw,13px); border-width:2px; }
+  #tabs { flex:0 0 54px; min-height:54px; }
+  .tab { padding:4px 1px 5px; font-size:9px; }
+  .tab em { font-size:17px; }
+  @media (min-width:700px) {
+    #app { width:min(100vw,56.25dvh); max-width:560px; box-shadow:0 0 36px rgba(0,0,0,.45); }
+  }
+  @media (max-height:700px) {
+    #hud { padding:4px 6px; gap:4px; }
+    .hbtn { width:30px; height:30px; flex-basis:30px; font-size:13px; }
+    #lvlChip { padding:4px 6px; font-size:10px; }
+    #goalTitle { font-size:11px; }
+    #goalBar { height:18px; }
+    #goalText { line-height:14px; font-size:10px; }
+    #resRow { min-height:29px; padding:2px 4px; }
+    #rwRow { min-height:33px; padding:2px 4px; }
+    .rwbtn { min-height:26px; font-size:9px; }
+    #shop { flex-basis:92px; min-height:92px; padding:3px 3px 5px; }
+    .card .cap { min-height:21px; padding:3px 1px; }
+    .card .icon { height:24px; }
+    .card .stat { font-size:8px; }
+    .buy { padding:4px 1px; margin-bottom:3px; }
+    #tabs { flex-basis:46px; min-height:46px; }
+    .tab em { font-size:15px; }
+  }
+
 </style>
 </head>
 <body>
@@ -1390,23 +1450,20 @@ document.addEventListener('pointerdown', ()=>{ try{ const a=ac(); if(a) a.resume
 /* ================= РЕНДЕР (адаптивная ширина) ================= */
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 let curRS=1, bgLayer=null, bgKey='';
-let VIEW_W=540, OFFX=0;
 function resize(){
   const wrap=document.getElementById('cvWrap');
   if (!wrap || wrap.clientWidth<10 || wrap.clientHeight<10) return;
   curRS=Math.min(2, window.devicePixelRatio||1);
   const ww=wrap.clientWidth, wh=wrap.clientHeight;
-  const aspect=ww/wh;
-  // Preserve the original 540x720 gameplay proportions. Never stretch the
-  // physics scene to the wide Pikabu container.
-  VIEW_W=Math.max(540, Math.min(1600, Math.round(aspect*720)));
-  OFFX=(VIEW_W-540)/2;
-  const sc=Math.min(ww/VIEW_W, wh/720);
-  const cssW=VIEW_W*sc, cssH=720*sc;
+  // Keep the original 540x720 logical playfield. Scale the display canvas
+  // uniformly; never change the physics coordinate system or stretch it.
+  const sc=Math.min(ww/W, wh/H);
+  const cssW=W*sc, cssH=H*sc;
   cv.style.width=cssW+'px'; cv.style.height=cssH+'px';
-  cv.width=Math.max(1,Math.round(cssW*curRS));
-  cv.height=Math.max(1,Math.round(cssH*curRS));
+  cv.width=Math.max(1,Math.round(W*curRS));
+  cv.height=Math.max(1,Math.round(H*curRS));
   ctx.setTransform(curRS,0,0,curRS,0,0);
+  bgLayer=null;
   bgKey='';
 }
 addEventListener('resize', ()=>{ if(curView==='game') resize(); });
@@ -1516,9 +1573,9 @@ function renderStatic(key){
   bgLayer=document.createElement('canvas');
   bgLayer.width=cv.width; bgLayer.height=cv.height;
   const g=bgLayer.getContext('2d'); g.setTransform(curRS,0,0,curRS,0,0);
-  let gr=g.createRadialGradient(VIEW_W/2,330,60,VIEW_W/2,360,Math.max(520,VIEW_W*.7));
+  let gr=g.createRadialGradient(W/2,330,60,W/2,360,Math.max(520,W*.7));
   gr.addColorStop(0,'#2c4066'); gr.addColorStop(.6,'#1f2c4c'); gr.addColorStop(1,'#141d33');
-  g.fillStyle=gr; g.fillRect(0,0,VIEW_W,H);
+  g.fillStyle=gr; g.fillRect(0,0,W,H);
   g.save(); 
   drawBackdrop(g, CFG.bg, rngFactory(S.level*7919+13));
   let lp=g.createRadialGradient(270,CFG.ceilY+50,10,270,CFG.ceilY+50,150);
@@ -1528,9 +1585,9 @@ function renderStatic(key){
   cg.addColorStop(0,'rgba(90,140,220,.10)'); cg.addColorStop(1,'rgba(90,140,220,0)');
   g.fillStyle=cg; g.fillRect(-400,120,1340,520);
   g.restore();
-  const vg=g.createRadialGradient(VIEW_W/2,360,220,VIEW_W/2,360,Math.max(540,VIEW_W*.75));
+  const vg=g.createRadialGradient(W/2,360,220,W/2,360,Math.max(540,W*.75));
   vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(5,8,16,.5)');
-  g.fillStyle=vg; g.fillRect(0,0,VIEW_W,H);
+  g.fillStyle=vg; g.fillRect(0,0,W,H);
   g.save(); 
   const tg=g.createLinearGradient(250,0,290,0);
   tg.addColorStop(0,'#4a5a7c'); tg.addColorStop(.3,'#c7d4ea'); tg.addColorStop(.55,'#8fa2c4'); tg.addColorStop(1,'#3d4c6b');
@@ -1551,9 +1608,9 @@ function renderStatic(key){
     g.fillStyle='#c7d4ea'; g.beginPath(); g.arc(x-1.4,y-1.4,1.8,0,7); g.fill();
   }
   g.restore();
-  const sh=g.createLinearGradient(0,0,VIEW_W*.7,H*.45);
+  const sh=g.createLinearGradient(0,0,W*.7,H*.45);
   sh.addColorStop(0,'rgba(255,255,255,.06)'); sh.addColorStop(.5,'rgba(255,255,255,.015)'); sh.addColorStop(1,'rgba(255,255,255,0)');
-  g.fillStyle=sh; g.fillRect(0,0,VIEW_W,H);
+  g.fillStyle=sh; g.fillRect(0,0,W,H);
   bgKey=key;
 }
 function drawPad(g,p,pr){
@@ -1631,18 +1688,18 @@ function drawCoin(c, now){
   ctx.restore();
 }
 function draw(dt){
-  const key=`${S.level}|${S.pb}|${ST.padLen}|${curRS}|${VIEW_W}`;
+  const key=`${S.level}|${S.pb}|${ST.padLen}|${curRS}|${W}`;
   if (!bgLayer || key!==bgKey) renderStatic(key);
   const now=performance.now()/1000;
-  ctx.clearRect(0,0,VIEW_W,H);
+  ctx.clearRect(0,0,W,H);
   ctx.save();
   if (shake>0.3){ shake*=Math.pow(.0018,dt); ctx.translate((Math.random()*2-1)*shake,(Math.random()*2-1)*shake); }
   else shake=0;
-  ctx.drawImage(bgLayer,0,0,VIEW_W,H);
+  ctx.drawImage(bgLayer,0,0,W,H);
   for (const d of dust){
     d.y-=d.v*dt; d.x+=Math.sin(now*.7+d.ph)*8*dt;
-    if (d.y<-4){ d.y=H+4; d.x=Math.random()*VIEW_W; }
-    if (d.x<-4) d.x=VIEW_W+4; if (d.x>VIEW_W+4) d.x=-4;
+    if (d.y<-4){ d.y=H+4; d.x=Math.random()*W; }
+    if (d.x<-4) d.x=W+4; if (d.x>W+4) d.x=-4;
     ctx.globalAlpha=.05+.05*(1+Math.sin(now*1.6+d.ph))/2;
     ctx.fillStyle='#c7d4ea';
     ctx.beginPath(); ctx.arc(d.x,d.y,d.s,0,7); ctx.fill();
@@ -1717,7 +1774,7 @@ function draw(dt){
   ctx.globalAlpha=1;
   ctx.restore();
   if (flash>0){ flash=Math.max(0,flash-dt*2.4);
-    ctx.fillStyle=`rgba(255,255,255,${flash*.55})`; ctx.fillRect(0,0,VIEW_W,H); }
+    ctx.fillStyle=`rgba(255,255,255,${flash*.55})`; ctx.fillRect(0,0,W,H); }
 }
 
 /* ================= HUD / UI ================= */
