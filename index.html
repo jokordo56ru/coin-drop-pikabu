@@ -410,6 +410,11 @@
   #viewGame { min-height:0; }
   #cvWrap { flex:1 1 0; min-height:100px; overflow:hidden; padding:3px 0; }
   #cvWrap canvas { display:block; max-width:100%; max-height:100%; }
+
+  /* True portrait 9:16 playfield: use the whole available scene column. */
+  #cvWrap { width:100%; min-height:0; flex:1 1 0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  #cvWrap canvas { display:block; width:auto; height:auto; max-width:100%; max-height:100%; aspect-ratio:9 / 16; object-fit:contain; }
+
   #shop { flex:0 0 108px; min-height:108px; gap:4px; padding:5px 4px 7px; }
   .card { min-width:0; border-radius:10px; border-width:2px; }
   .card .cap { min-height:25px; padding:5px 1px; font-size:clamp(8px,2.35vw,11px); letter-spacing:0; }
@@ -743,7 +748,7 @@ function applyLang(){
 }
 
 /* ================= КОНФИГ ================= */
-const W = 540, H = 720;          // логическая ширина игрового поля (физика/уровни)
+const W = 540, H = 960;          // вертикальная игровая сцена 9:16; физика работает в тех же логических единицах
 const GRAV = 950, KICK = 520, MAXV = 950;
 const REST_WALL = 0.88, REST_COIN = 0.85;
 const HIT_BASE = 5, MERGE_MULT = 3, START_WALLET = 100;
@@ -898,10 +903,13 @@ const SHAPES = [
  [[140,200],[90,300],[90,510],[160,540],[215,495],[270,540],[325,495],[380,540],[450,510],[450,300],[400,200]],
 ];
 function levelCfg(l){
-  const pts = SHAPES[(l-1) % SHAPES.length];
+  // Stretch the arena's vertical footprint (not the coins) into the 9:16 world.
+  // The original 540x720 level coordinates are mapped from y=130 with a 1.5x vertical span.
+  const y916 = y => 130 + (y-130)*1.5;
+  const pts = SHAPES[(l-1) % SHAPES.length].map(([x,y])=>[x,y916(y)]);
   const cx = pts.reduce((a,p)=>a+p[0],0)/pts.length, cy = pts.reduce((a,p)=>a+p[1],0)/pts.length;
   const x0=pts[0][0], y0=pts[0][1], x1=pts[pts.length-1][0], y1=pts[pts.length-1][1];
-  const ceilY = y0-60;
+  const ceilY = y0-90;
   const walls = [];
   for (let i=0;i<pts.length-1;i++) walls.push([...pts[i], ...pts[i+1]]);
   walls.push([x0,ceilY,x0,y0]);
@@ -1550,7 +1558,7 @@ function drawBackdrop(g,id,rnd){
     for(let i=0;i<3;i++){ g.beginPath(); g.ellipse(90+i*170, 90+(i%2)*40, 60,14,0,0,7); g.fill(); }
     g.fillStyle='rgba(64,44,102,.55)';
     g.beginPath(); g.moveTo(-420,430); g.lineTo(120,300); g.lineTo(230,420); g.lineTo(330,330);
-    g.lineTo(440,430); g.lineTo(960,360); g.lineTo(960,720); g.lineTo(-420,720); g.fill();
+    g.lineTo(440,430); g.lineTo(960,360); g.lineTo(960,H); g.lineTo(-420,H); g.fill();
     g.fillStyle='rgba(24,20,52,.7)';
     g.beginPath(); g.moveTo(-420,520); g.lineTo(90,430); g.lineTo(200,520); g.lineTo(320,440);
     g.lineTo(430,530); g.lineTo(960,470); g.lineTo(960,720); g.lineTo(-420,720); g.fill();
@@ -1688,7 +1696,7 @@ function drawCoin(c, now){
   ctx.restore();
 }
 function draw(dt){
-  const key=`${S.level}|${S.pb}|${ST.padLen}|${curRS}|${W}`;
+  const key=`${S.level}|${S.pb}|${ST.padLen}|${curRS}|${W}|${H}`;
   if (!bgLayer || key!==bgKey) renderStatic(key);
   const now=performance.now()/1000;
   ctx.clearRect(0,0,W,H);
@@ -1846,7 +1854,7 @@ $('mReset').onclick=()=>{ if(confirm(L('reset_confirm'))){ localStorage.removeIt
 
 /* ================= СЕЙВ ================= */
 function buildSaveData(){ return {
-  level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
+  sceneVersion:2, level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
   tube:S.tube, tubeT:Math.round(S.tubeT*10)/10, buffX2:Math.round(S.buffX2), sale:S.sale, turbo:S.turbo,
   red:RED, blue:BLUE, owned:[...OWNED], cards:CARD_OWN, packs:PACK_INV,
   coins:S.coins.map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.vx),Math.round(c.vy),c.tier]) }; }
@@ -1861,7 +1869,7 @@ function restoreSaveData(d){ try{
       cb:Number(d.cb)||0, pb:Number(d.pb)||0, mb:Number(d.mb)||0, coins:[], won:false,
       tube:Number(d.tube)||0, tubeT:Number(d.tubeT)||0, buffX2:Number(d.buffX2)||0, sale:!!d.sale, turbo:!!d.turbo, comboN:0, comboT:0 };
   CFG=levelCfg(S.level); padGlow=[]; muted=!!d.muted; $('muteBtn').textContent=muted?'🔇':'';
-  (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5) S.coins.push({x:Number(c[0])||270,y:Number(c[1])||CFG.ceilY+26,vx:Number(c[2])||0,vy:Number(c[3])||0,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); });
+  (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5){ const oldY=Number(c[1])||CFG.ceilY+26; const coinY=Number(d.sceneVersion)>=2?oldY:130+(oldY-130)*1.5; S.coins.push({x:Number(c[0])||270,y:coinY,vx:Number(c[2])||0,vy:Number(c[3])||0,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); } });
   return true;
  }catch(e){ console.warn('Save data restore failed:',e); return false; } }
 function save(){
