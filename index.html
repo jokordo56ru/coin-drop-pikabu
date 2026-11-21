@@ -1397,12 +1397,17 @@ function resize(){
   curRS=Math.min(2, window.devicePixelRatio||1);
   const ww=wrap.clientWidth, wh=wrap.clientHeight;
   const aspect=ww/wh;
-  VIEW_W=Math.max(540, Math.min(1600, Math.round(aspect*720)));
-  OFFX=(VIEW_W-540)/2;
+  // Pikabu desktop windows are very wide. Use the full logical width instead
+  // of capping it at 1600px (the cap previously left most of the canvas empty).
+  VIEW_W=Math.max(540, Math.round(aspect*720));
+  OFFX=0;
   const sc=Math.min(ww/VIEW_W, wh/720);
-  cv.style.width=(VIEW_W*sc)+'px'; cv.style.height=(720*sc)+'px';
-  cv.width=Math.round(VIEW_W*curRS); cv.height=Math.round(720*curRS);
-  ctx.setTransform(curRS,0,0,curRS,0,0);
+  cv.style.width=ww+'px'; cv.style.height=wh+'px';
+  // Keep the backing bitmap tied to the real display size, not the expanded
+  // virtual world width, to avoid huge canvases on ultrawide game pages.
+  cv.width=Math.max(1,Math.round(ww*curRS));
+  cv.height=Math.max(1,Math.round(wh*curRS));
+  ctx.setTransform(curRS*sc,0,0,curRS*sc,0,0);
   bgKey='';
 }
 addEventListener('resize', ()=>{ if(curView==='game') resize(); });
@@ -1511,11 +1516,11 @@ function drawBackdrop(g,id,rnd){
 function renderStatic(key){
   bgLayer=document.createElement('canvas');
   bgLayer.width=cv.width; bgLayer.height=cv.height;
-  const g=bgLayer.getContext('2d'); g.setTransform(curRS,0,0,curRS,0,0);
+  const g=bgLayer.getContext('2d'); const wrap=document.getElementById('cvWrap'); const sc=Math.min(wrap.clientWidth/VIEW_W,wrap.clientHeight/720); g.setTransform(curRS*sc,0,0,curRS*sc,0,0);
   let gr=g.createRadialGradient(VIEW_W/2,330,60,VIEW_W/2,360,Math.max(520,VIEW_W*.7));
   gr.addColorStop(0,'#2c4066'); gr.addColorStop(.6,'#1f2c4c'); gr.addColorStop(1,'#141d33');
   g.fillStyle=gr; g.fillRect(0,0,VIEW_W,H);
-  g.save(); g.translate(OFFX,0);
+  g.save(); g.scale(VIEW_W/W,1);
   drawBackdrop(g, CFG.bg, rngFactory(S.level*7919+13));
   let lp=g.createRadialGradient(270,CFG.ceilY+50,10,270,CFG.ceilY+50,150);
   lp.addColorStop(0,'rgba(160,200,255,.10)'); lp.addColorStop(1,'rgba(160,200,255,0)');
@@ -1644,7 +1649,7 @@ function draw(dt){
     ctx.beginPath(); ctx.arc(d.x,d.y,d.s,0,7); ctx.fill();
   }
   ctx.globalAlpha=1;
-  ctx.translate(OFFX,0);
+  ctx.scale(VIEW_W/W,1);
   pads().forEach((p,i)=>{
     const tgl=now-(padGlow[i]||-9);
     const pr=tgl<0.18 ? 1-tgl/0.18 : 0;
