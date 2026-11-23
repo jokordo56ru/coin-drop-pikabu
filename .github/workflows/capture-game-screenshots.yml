@@ -1,0 +1,96 @@
+name: Capture COIN DROP screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Capture real gameplay screens from GitHub Pages
+        run: |
+          mkdir -p screenshots
+          cat > capture.mjs <<'EOF'
+          import { chromium } from 'playwright';
+
+          const browser = await chromium.launch({ headless: true });
+          const page = await browser.newPage({
+            viewport: { width: 1920, height: 1080 },
+            deviceScaleFactor: 1
+          });
+
+          page.on('pageerror', error => console.log('PAGE ERROR:', error.message));
+          await page.addInitScript(() => {
+            try { localStorage.removeItem('coindrop_v2'); } catch {}
+          });
+
+          const url = 'https://jokordo56ru.github.io/coin-drop-pikabu/';
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
+          await page.waitForSelector('canvas', { timeout: 60000 });
+          await page.waitForTimeout(1800);
+
+          const start = page.locator('#mStart');
+          if (await start.isVisible()) await start.click();
+          await page.waitForTimeout(1800);
+          await page.screenshot({ path: 'screenshots/01-game-start.png' });
+
+          // Buy several coins to capture a real in-progress scene.
+          for (let i = 0; i < 5; i++) {
+            const buy = page.locator('#bCoin');
+            if (await buy.isVisible() && await buy.isEnabled()) {
+              await buy.click();
+              await page.waitForTimeout(450);
+            }
+          }
+          await page.waitForTimeout(2500);
+          const merge = page.locator('#bMerge');
+          if (await merge.isVisible() && await merge.isEnabled()) {
+            await merge.click();
+            await page.waitForTimeout(900);
+          }
+          await page.screenshot({ path: 'screenshots/02-coins-gameplay.png' });
+
+          const skills = page.locator('#tabProg');
+          if (await skills.isVisible()) await skills.click();
+          await page.waitForTimeout(1000);
+          await page.screenshot({ path: 'screenshots/03-skill-tree.png' });
+
+          const packs = page.locator('#tabShop');
+          if (await packs.isVisible()) await packs.click();
+          await page.waitForTimeout(900);
+          await page.screenshot({ path: 'screenshots/04-packs-shop.png' });
+
+          const cards = page.locator('#tabOpen');
+          if (await cards.isVisible()) await cards.click();
+          await page.waitForTimeout(900);
+          await page.screenshot({ path: 'screenshots/05-card-collection.png' });
+
+          await browser.close();
+          EOF
+          node capture.mjs
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: coin-drop-real-gameplay-screenshots
+          path: screenshots/*.png
+          if-no-files-found: error
+          retention-days: 14
