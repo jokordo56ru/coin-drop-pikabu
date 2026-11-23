@@ -1817,7 +1817,6 @@ function restoreSaveData(d){ try{
       cb:Number(d.cb)||0, pb:Number(d.pb)||0, mb:Number(d.mb)||0, coins:[], won:false,
       tube:Number(d.tube)||0, tubeT:Number(d.tubeT)||0, buffX2:Number(d.buffX2)||0, sale:!!d.sale, turbo:!!d.turbo, comboN:0, comboT:0 };
   const savedCoinXs=(Array.isArray(d.coins)?d.coins:[]).filter(c=>Array.isArray(c)&&c.length>=5).map(c=>Number(c[0])||0);
-  const legacyWidth=Number(d.worldWidth)>W?Number(d.worldWidth):(savedCoinXs.some(x=>x>W)?1600:W);
   const saveVersion=Number(d.worldVersion)||1;
   const legacyWidth=Number(d.worldWidth)>W?Number(d.worldWidth):(savedCoinXs.some(x=>x>W)?1600:W);
   const oldXScale=legacyWidth/W*(saveVersion>=3?1.25:1);
