@@ -1403,7 +1403,7 @@ function resize(){
   const aspect=ww/wh;
   // Widen the vessel and its physics geometry to fill Pikabu's frame.
   // Coin radii and vertical measurements remain unchanged.
-  VIEW_W=Math.max(W, Math.min(1600, Math.round(aspect*H)));
+  VIEW_W=Math.max(W, Math.round(aspect*H));
   const nextScale=VIEW_W/W;
   if(Math.abs(nextScale-ARENA_SCALE_X)>0.001){
     const ratio=nextScale/ARENA_SCALE_X;
