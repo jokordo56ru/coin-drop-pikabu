@@ -685,6 +685,7 @@ function applyLang(){
 /* ================= КОНФИГ ================= */
 const W = 540, H = 360, BASE_H = 720; // компактная логическая высота для широкой арены
 let ARENA_SCALE_X=1, ARENA_SCALE_Y=H/BASE_H;
+const ARENA_SPREAD=1.25;
 const WORLD_CX=()=>W*ARENA_SCALE_X/2;
 const GRAV = 950, KICK = 520, MAXV = 950;
 const REST_WALL = 0.88, REST_COIN = 0.85;
@@ -842,7 +843,7 @@ const SHAPES = [
 function levelCfg(l){
   // Scale arena geometry horizontally to the real Pikabu viewport.
   // Coin radii remain untouched, so coins stay perfectly round.
-  const pts = SHAPES[(l-1) % SHAPES.length].map(([x,y])=>[WORLD_CX()+(x-W/2)*ARENA_SCALE_X,y*ARENA_SCALE_Y]);
+  const pts = SHAPES[(l-1) % SHAPES.length].map(([x,y])=>[WORLD_CX()+(x-W/2)*ARENA_SCALE_X*ARENA_SPREAD,y*ARENA_SCALE_Y]);
   const cx = pts.reduce((a,p)=>a+p[0],0)/pts.length, cy = pts.reduce((a,p)=>a+p[1],0)/pts.length;
   const x0=pts[0][0], y0=pts[0][1], x1=pts[pts.length-1][0], y1=pts[pts.length-1][1];
   const ceilY = y0-60;
@@ -1544,7 +1545,7 @@ function renderStatic(key){
   gr.addColorStop(0,'#2c4066'); gr.addColorStop(.6,'#1f2c4c'); gr.addColorStop(1,'#141d33');
   g.fillStyle=gr; g.fillRect(0,0,VIEW_W,H);
   g.save();
-  g.save(); g.translate((ARENA_SCALE_X-1)*W/2,0); g.scale(ARENA_SCALE_X,ARENA_SCALE_Y);
+  g.save(); g.translate((ARENA_SCALE_X*ARENA_SPREAD-1)*W/2,0); g.scale(ARENA_SCALE_X*ARENA_SPREAD,ARENA_SCALE_Y);
   drawBackdrop(g, CFG.bg, rngFactory(S.level*7919+13)); g.restore();
   let lp=g.createRadialGradient(WORLD_CX(),CFG.ceilY+50,10,WORLD_CX(),CFG.ceilY+50,150);
   lp.addColorStop(0,'rgba(160,200,255,.10)'); lp.addColorStop(1,'rgba(160,200,255,0)');
@@ -1815,7 +1816,7 @@ $('mReset').onclick=()=>{ if(confirm(L('reset_confirm'))){ localStorage.removeIt
 
 /* ================= СЕЙВ ================= */
 function buildSaveData(){ return {
-  worldVersion:2, worldWidth:VIEW_W, level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
+  worldVersion:3, worldWidth:VIEW_W, level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
   tube:S.tube, tubeT:Math.round(S.tubeT*10)/10, buffX2:Math.round(S.buffX2), sale:S.sale, turbo:S.turbo,
   red:RED, blue:BLUE, owned:[...OWNED], cards:CARD_OWN, packs:PACK_INV,
   coins:S.coins.map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.vx),Math.round(c.vy),c.tier]) }; }
@@ -1832,9 +1833,10 @@ function restoreSaveData(d){ try{
   const savedCoinXs=(Array.isArray(d.coins)?d.coins:[]).filter(c=>Array.isArray(c)&&c.length>=5).map(c=>Number(c[0])||0);
   const legacyWidth=Number(d.worldWidth)>W?Number(d.worldWidth):(savedCoinXs.some(x=>x>W)?1600:W);
   ARENA_SCALE_X=legacyWidth/W;
+  const legacyGeometry=Number(d.worldVersion)<3;
   CFG=levelCfg(S.level); padGlow=[]; muted=!!d.muted; $('muteBtn').textContent=muted?'🔇':'';
   const legacyYScale = Number(d.worldVersion)>=2 ? 1 : ARENA_SCALE_Y;
-  (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5) S.coins.push({x:Number(c[0])||270,y:(Number(c[1])||CFG.ceilY+26)*legacyYScale,vx:Number(c[2])||0,vy:(Number(c[3])||0)*legacyYScale,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); });
+  (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5){ const oldX=Number(c[0])||270, center=legacyWidth/2; S.coins.push({x:legacyGeometry?center+(oldX-center)*ARENA_SPREAD:oldX,y:(Number(c[1])||CFG.ceilY+26)*legacyYScale,vx:(Number(c[2])||0)*(legacyGeometry?ARENA_SPREAD:1),vy:(Number(c[3])||0)*legacyYScale,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); }});
   return true;
  }catch(e){ console.warn('Save data restore failed:',e); return false; } }
 function save(){
