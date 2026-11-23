@@ -683,8 +683,8 @@ function applyLang(){
 }
 
 /* ================= КОНФИГ ================= */
-const W = 540, H = 720;          // базовая логическая ширина и высота
-let ARENA_SCALE_X=1;
+const W = 540, H = 360, BASE_H = 720; // компактная логическая высота для широкой арены
+let ARENA_SCALE_X=1, ARENA_SCALE_Y=H/BASE_H;
 const WORLD_CX=()=>W*ARENA_SCALE_X/2;
 const GRAV = 950, KICK = 520, MAXV = 950;
 const REST_WALL = 0.88, REST_COIN = 0.85;
@@ -842,7 +842,7 @@ const SHAPES = [
 function levelCfg(l){
   // Scale arena geometry horizontally to the real Pikabu viewport.
   // Coin radii remain untouched, so coins stay perfectly round.
-  const pts = SHAPES[(l-1) % SHAPES.length].map(([x,y])=>[WORLD_CX()+(x-W/2)*ARENA_SCALE_X,y]);
+  const pts = SHAPES[(l-1) % SHAPES.length].map(([x,y])=>[WORLD_CX()+(x-W/2)*ARENA_SCALE_X,y*ARENA_SCALE_Y]);
   const cx = pts.reduce((a,p)=>a+p[0],0)/pts.length, cy = pts.reduce((a,p)=>a+p[1],0)/pts.length;
   const x0=pts[0][0], y0=pts[0][1], x1=pts[pts.length-1][0], y1=pts[pts.length-1][1];
   const ceilY = y0-60;
@@ -1403,7 +1403,7 @@ function resize(){
   const aspect=ww/wh;
   // Widen the vessel and its physics geometry to fill Pikabu's frame.
   // Coin radii and vertical measurements remain unchanged.
-  VIEW_W=Math.max(W, Math.min(1600, Math.round(aspect*H)));
+  VIEW_W=Math.max(W, Math.round(aspect*H));
   const nextScale=VIEW_W/W;
   if(Math.abs(nextScale-ARENA_SCALE_X)>0.001){
     const ratio=nextScale/ARENA_SCALE_X;
@@ -1423,8 +1423,8 @@ function resize(){
   const sc=Math.min(ww/VIEW_W, wh/H);
   const cssW=VIEW_W*sc, cssH=H*sc;
   cv.style.width=cssW+'px'; cv.style.height=cssH+'px';
-  cv.width=Math.max(1,Math.round(cssW*curRS));
-  cv.height=Math.max(1,Math.round(cssH*curRS));
+  cv.width=Math.max(1,Math.round(VIEW_W*curRS));
+  cv.height=Math.max(1,Math.round(H*curRS));
   ctx.setTransform(curRS,0,0,curRS,0,0);
   bgKey='';
 }
@@ -1463,14 +1463,14 @@ function drawBackdrop(g,id,rnd){
   g.save();
   if (id===0){
     for(let i=0;i<70;i++){ g.globalAlpha=.2+rnd()*.6; g.fillStyle='#dfe8ff';
-      const sz=rnd()<.2?2:1; g.fillRect(rnd()*540, rnd()*H, sz, sz); }
+      const sz=rnd()<.2?2:1; g.fillRect(rnd()*540, rnd()*BASE_H, sz, sz); }
     g.globalAlpha=1;
     let nb=g.createRadialGradient(140,180,10,140,180,180);
     nb.addColorStop(0,'rgba(143,107,249,.16)'); nb.addColorStop(1,'rgba(143,107,249,0)');
-    g.fillStyle=nb; g.fillRect(-400,0,1340,H);
+    g.fillStyle=nb; g.fillRect(-400,0,1340,BASE_H);
     let nb2=g.createRadialGradient(420,420,10,420,420,200);
     nb2.addColorStop(0,'rgba(58,160,255,.12)'); nb2.addColorStop(1,'rgba(58,160,255,0)');
-    g.fillStyle=nb2; g.fillRect(-400,0,1340,H);
+    g.fillStyle=nb2; g.fillRect(-400,0,1340,BASE_H);
     const pg=g.createRadialGradient(415,125,8,430,140,50);
     pg.addColorStop(0,'#7fd4c9'); pg.addColorStop(1,'#1f6f66');
     g.fillStyle=pg; g.beginPath(); g.arc(430,140,44,0,7); g.fill();
@@ -1483,10 +1483,10 @@ function drawBackdrop(g,id,rnd){
     g.fillStyle=mg2; g.beginPath(); g.arc(440,110,90,0,7); g.fill();
     g.fillStyle='rgba(223,232,255,.85)'; g.beginPath(); g.arc(440,110,26,0,7); g.fill();
     let x=-420;
-    while(x<960){ const bw=40+rnd()*50, bh=180+rnd()*260, by=H-bh;
+    while(x<960){ const bw=40+rnd()*50, bh=180+rnd()*260, by=BASE_H-bh;
       g.fillStyle='rgba(10,16,32,.75)'; g.fillRect(x,by,bw,bh);
       g.fillStyle='rgba(255,217,74,.5)';
-      for(let wy=by+12; wy<H-10; wy+=22) for(let wx=x+7; wx<x+bw-8; wx+=16) if(rnd()<.35) g.fillRect(wx,wy,5,7);
+      for(let wy=by+12; wy<BASE_H-10; wy+=22) for(let wx=x+7; wx<x+bw-8; wx+=16) if(rnd()<.35) g.fillRect(wx,wy,5,7);
       x+=bw+6; }
   } else if (id===2){
     const gear=(cx,cy,r,n)=>{ g.fillStyle='rgba(10,16,32,.7)';
@@ -1501,13 +1501,13 @@ function drawBackdrop(g,id,rnd){
   } else if (id===3){
     for(let i=-2;i<7;i++){ g.fillStyle='rgba(223,232,255,.05)';
       g.beginPath(); g.moveTo(60+i*100,0); g.lineTo(110+i*100,0);
-      g.lineTo(130+i*100,H); g.lineTo(70+i*100,H); g.fill(); }
+      g.lineTo(130+i*100,BASE_H); g.lineTo(70+i*100,BASE_H); g.fill(); }
     g.strokeStyle='rgba(125,255,138,.25)'; g.lineWidth=6; g.lineCap='round';
     for(let i=0;i<6;i++){ const bx=40+i*90+rnd()*30; g.beginPath();
-      for(let y=H; y>H-160-rnd()*80; y-=12) g.lineTo(bx+Math.sin(y*.05+i)*10, y);
+      for(let y=BASE_H; y>BASE_H-160-rnd()*80; y-=12) g.lineTo(bx+Math.sin(y*.05+i)*10, y);
       g.stroke(); }
     g.strokeStyle='rgba(223,232,255,.25)'; g.lineWidth=2;
-    for(let i=0;i<14;i++){ g.beginPath(); g.arc(rnd()*540, rnd()*H, 3+rnd()*8, 0,7); g.stroke(); }
+    for(let i=0;i<14;i++){ g.beginPath(); g.arc(rnd()*540, rnd()*BASE_H, 3+rnd()*8, 0,7); g.stroke(); }
   } else if (id===4){
     const sg=g.createRadialGradient(400,170,10,400,170,120);
     sg.addColorStop(0,'rgba(255,153,51,.5)'); sg.addColorStop(1,'rgba(255,153,51,0)');
@@ -1544,7 +1544,7 @@ function renderStatic(key){
   gr.addColorStop(0,'#2c4066'); gr.addColorStop(.6,'#1f2c4c'); gr.addColorStop(1,'#141d33');
   g.fillStyle=gr; g.fillRect(0,0,VIEW_W,H);
   g.save();
-  g.save(); g.translate((ARENA_SCALE_X-1)*W/2,0); g.scale(ARENA_SCALE_X,1);
+  g.save(); g.translate((ARENA_SCALE_X-1)*W/2,0); g.scale(ARENA_SCALE_X,ARENA_SCALE_Y);
   drawBackdrop(g, CFG.bg, rngFactory(S.level*7919+13)); g.restore();
   let lp=g.createRadialGradient(WORLD_CX(),CFG.ceilY+50,10,WORLD_CX(),CFG.ceilY+50,150);
   lp.addColorStop(0,'rgba(160,200,255,.10)'); lp.addColorStop(1,'rgba(160,200,255,0)');
@@ -1815,7 +1815,7 @@ $('mReset').onclick=()=>{ if(confirm(L('reset_confirm'))){ localStorage.removeIt
 
 /* ================= СЕЙВ ================= */
 function buildSaveData(){ return {
-  level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
+  worldVersion:2, level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
   tube:S.tube, tubeT:Math.round(S.tubeT*10)/10, buffX2:Math.round(S.buffX2), sale:S.sale, turbo:S.turbo,
   red:RED, blue:BLUE, owned:[...OWNED], cards:CARD_OWN, packs:PACK_INV,
   coins:S.coins.map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.vx),Math.round(c.vy),c.tier]) }; }
@@ -1830,7 +1830,8 @@ function restoreSaveData(d){ try{
       cb:Number(d.cb)||0, pb:Number(d.pb)||0, mb:Number(d.mb)||0, coins:[], won:false,
       tube:Number(d.tube)||0, tubeT:Number(d.tubeT)||0, buffX2:Number(d.buffX2)||0, sale:!!d.sale, turbo:!!d.turbo, comboN:0, comboT:0 };
   CFG=levelCfg(S.level); padGlow=[]; muted=!!d.muted; $('muteBtn').textContent=muted?'🔇':'';
-  (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5) S.coins.push({x:Number(c[0])||270,y:Number(c[1])||CFG.ceilY+26,vx:Number(c[2])||0,vy:Number(c[3])||0,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); });
+  const legacyYScale = Number(d.worldVersion)>=2 ? 1 : ARENA_SCALE_Y;
+  (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5) S.coins.push({x:Number(c[0])||270,y:(Number(c[1])||CFG.ceilY+26)*legacyYScale,vx:Number(c[2])||0,vy:(Number(c[3])||0)*legacyYScale,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); });
   return true;
  }catch(e){ console.warn('Save data restore failed:',e); return false; } }
 function save(){
