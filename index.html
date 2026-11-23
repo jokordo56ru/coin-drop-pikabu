@@ -1401,8 +1401,8 @@ function resize(){
   curRS=Math.min(2, window.devicePixelRatio||1);
   const ww=wrap.clientWidth, wh=wrap.clientHeight;
   const aspect=ww/wh;
-  // Widen the vessel and its physics geometry to fill Pikabu's frame.
-  // Coin radii and vertical measurements remain unchanged.
+  // Fit a compact world to the full available viewport width.
+  // Coin radii remain circular and are not stretched with the arena.
   VIEW_W=Math.max(W, Math.round(aspect*H));
   const nextScale=VIEW_W/W;
   if(Math.abs(nextScale-ARENA_SCALE_X)>0.001){
@@ -1815,7 +1815,7 @@ $('mReset').onclick=()=>{ if(confirm(L('reset_confirm'))){ localStorage.removeIt
 
 /* ================= СЕЙВ ================= */
 function buildSaveData(){ return {
-  worldVersion:2, level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
+  worldVersion:2, worldWidth:VIEW_W, level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
   tube:S.tube, tubeT:Math.round(S.tubeT*10)/10, buffX2:Math.round(S.buffX2), sale:S.sale, turbo:S.turbo,
   red:RED, blue:BLUE, owned:[...OWNED], cards:CARD_OWN, packs:PACK_INV,
   coins:S.coins.map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.vx),Math.round(c.vy),c.tier]) }; }
@@ -1829,6 +1829,9 @@ function restoreSaveData(d){ try{
   S={ level:Math.max(1,Math.floor(Number(d.level))), wallet:Math.max(0,Number(d.wallet)||0), earned:Math.max(0,Number(d.earned)||0),
       cb:Number(d.cb)||0, pb:Number(d.pb)||0, mb:Number(d.mb)||0, coins:[], won:false,
       tube:Number(d.tube)||0, tubeT:Number(d.tubeT)||0, buffX2:Number(d.buffX2)||0, sale:!!d.sale, turbo:!!d.turbo, comboN:0, comboT:0 };
+  const savedCoinXs=(Array.isArray(d.coins)?d.coins:[]).filter(c=>Array.isArray(c)&&c.length>=5).map(c=>Number(c[0])||0);
+  const legacyWidth=Number(d.worldWidth)>W?Number(d.worldWidth):(savedCoinXs.some(x=>x>W)?1600:W);
+  ARENA_SCALE_X=legacyWidth/W;
   CFG=levelCfg(S.level); padGlow=[]; muted=!!d.muted; $('muteBtn').textContent=muted?'🔇':'';
   const legacyYScale = Number(d.worldVersion)>=2 ? 1 : ARENA_SCALE_Y;
   (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5) S.coins.push({x:Number(c[0])||270,y:(Number(c[1])||CFG.ceilY+26)*legacyYScale,vx:Number(c[2])||0,vy:(Number(c[3])||0)*legacyYScale,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); });
