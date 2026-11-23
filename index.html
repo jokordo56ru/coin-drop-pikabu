@@ -330,57 +330,6 @@
     text-shadow:0 1px 0 #0a3a0a; font-size:17px; box-shadow:0 5px 0 #145014, inset 0 2px 0 rgba(255,255,255,.5), 0 0 20px rgba(88,208,88,.35); }
   .mbtn.danger { background:linear-gradient(180deg,#ff7788,#e03346); border-color:#7a1622; font-size:12px;
     box-shadow:0 5px 0 #7a1622, inset 0 2px 0 rgba(255,255,255,.35); }
-
-  /* ===== PIKABU EMBED RESPONSIVE LAYOUT ===== */
-  /* The game is hosted in a relatively short iframe on the Pikabu game page.
-     Give the playfield more height while keeping every control readable. */
-  @media (min-width: 900px) and (max-height: 760px) {
-    #app { height:100dvh; min-height:0; }
-    #hud { flex:0 0 auto; min-height:58px; gap:8px; padding:6px 12px; }
-    .hbtn { width:42px; height:42px; font-size:18px; border-radius:11px; }
-    #lvlChip { font-size:14px; padding:7px 12px; }
-    #goalTitle { font-size:17px; letter-spacing:2px; }
-    #goalBar { height:27px; max-width:340px; margin-top:3px; }
-    #goalText { line-height:23px; font-size:14px; }
-    #wallet { min-width:116px; font-size:17px; padding:7px 12px; }
-    #resRow { flex:0 0 38px; min-height:38px; padding:3px 10px; gap:10px; }
-    .rchip { font-size:14px; padding:3px 14px; }
-    .rchip .gem { width:16px; height:16px; }
-    #buffChips { min-height:25px; font-size:13px; padding:3px 12px; }
-    #rwRow { flex:0 0 42px; min-height:42px; padding:4px 10px; gap:10px; }
-    .rwbtn { max-width:260px; min-height:32px; padding:5px 12px; font-size:13px; }
-    #main { flex:1 1 0; min-height:150px; }
-    #viewGame { min-height:0; }
-    #cvWrap { flex:1 1 0; min-height:120px; }
-    #shop { flex:0 0 116px; min-height:116px; gap:9px; padding:6px 9px 8px; }
-    .card { min-width:0; border-radius:15px; }
-    .card .cap { font-size:13px; padding:6px 2px; }
-    .card .icon { height:35px; }
-    .card .stat { font-size:12px; margin:0 0 4px; }
-    .buy { font-size:15px; padding:7px 0; margin-bottom:7px; }
-    #tabs { flex:0 0 52px; min-height:52px; }
-    .tab { padding:5px 2px 6px; font-size:12px; gap:1px; }
-    .tab em { font-size:19px; }
-  }
-  @media (min-width: 900px) and (max-height: 560px) {
-    #hud { min-height:52px; }
-    .hbtn { width:38px; height:38px; font-size:16px; }
-    #resRow { flex-basis:32px; min-height:32px; }
-    #rwRow { flex-basis:36px; min-height:36px; }
-    #shop { flex-basis:102px; min-height:102px; }
-    .card .icon { height:27px; }
-    .buy { padding:5px 0; }
-    #tabs { flex-basis:46px; min-height:46px; }
-  }
-  @media (max-width: 899px) {
-    #shop { gap:5px; padding:6px 5px 8px; }
-    .card .cap { font-size:clamp(9px, 2.1vw, 12px); }
-    .card .stat { font-size:clamp(9px, 1.9vw, 12px); }
-    .buy { font-size:clamp(11px, 2.2vw, 15px); }
-    #rwRow { gap:5px; padding:5px; }
-    .rwbtn { font-size:clamp(10px, 2vw, 13px); }
-  }
-
 </style>
 </head>
 <body>
@@ -683,10 +632,7 @@ function applyLang(){
 }
 
 /* ================= КОНФИГ ================= */
-const W = 540, H = 720; // исходная вертикальная арена 3:4
-let ARENA_SCALE_X=1, ARENA_SCALE_Y=1;
-const ARENA_SPREAD=1;
-const WORLD_CX=()=>W*ARENA_SCALE_X/2;
+const W = 540, H = 720;          // логическая ширина игрового поля (физика/уровни)
 const GRAV = 950, KICK = 520, MAXV = 950;
 const REST_WALL = 0.88, REST_COIN = 0.85;
 const HIT_BASE = 5, MERGE_MULT = 3, START_WALLET = 100;
@@ -841,9 +787,7 @@ const SHAPES = [
  [[140,200],[90,300],[90,510],[160,540],[215,495],[270,540],[325,495],[380,540],[450,510],[450,300],[400,200]],
 ];
 function levelCfg(l){
-  // Scale arena geometry horizontally to the real Pikabu viewport.
-  // Coin radii remain untouched, so coins stay perfectly round.
-  const pts = SHAPES[(l-1) % SHAPES.length].map(([x,y])=>[W/2+(x-W/2)*ARENA_SCALE_X,y*ARENA_SCALE_Y]);
+  const pts = SHAPES[(l-1) % SHAPES.length];
   const cx = pts.reduce((a,p)=>a+p[0],0)/pts.length, cy = pts.reduce((a,p)=>a+p[1],0)/pts.length;
   const x0=pts[0][0], y0=pts[0][1], x1=pts[pts.length-1][0], y1=pts[pts.length-1][1];
   const ceilY = y0-60;
@@ -887,7 +831,7 @@ let S=null, CFG=null, particles=[], floats=[], muted=false, musicOn=true;
 let RED=0, BLUE=0;
 let padGlow=[], shake=0, flash=0;
 let dust=[];
-for (let i=0;i<26;i++) dust.push({x:Math.random()*W,y:Math.random()*H,s:.6+Math.random()*1.7,v:7+Math.random()*15,ph:Math.random()*6});
+for (let i=0;i<26;i++) dust.push({x:Math.random()*900,y:Math.random()*H,s:.6+Math.random()*1.7,v:7+Math.random()*15,ph:Math.random()*6});
 function freshLevelState(level){ CFG=levelCfg(level); padGlow=[];
   return { level, wallet:START_WALLET+ST.startCash, earned:0, cb:0, pb:0, mb:0,
            coins:[], won:false, tube:0, tubeT:0, buffX2:0, sale:false, turbo:false, comboN:0, comboT:0 }; }
@@ -914,7 +858,7 @@ function insideVessel(x,y){
   }
   return inside;
 }
-const tubeSpawn = () => ({ x:WORLD_CX()+(Math.random()*12-6), y:CFG.ceilY+26, vx:Math.random()*80-40, vy:60 });
+const tubeSpawn = () => ({ x:270+(Math.random()*12-6), y:CFG.ceilY+26, vx:Math.random()*80-40, vy:60 });
 
 /* ================= ФИЗИКА ================= */
 function spawnCoin(tier=1){ const p=tubeSpawn(); S.coins.push({ ...p, tier, cd:{}, st:0, wt:0, sq:0, spin:Math.random()*6, trail:[] }); }
@@ -960,7 +904,7 @@ function step(dt){
     if (S.tubeT >= iv){
       if (S.coins.length < maxCoins()){
         spawnCoin(Math.random()<ST.tubeTierCh?2:1);
-        particles.push({x:WORLD_CX(),y:CFG.ceilY+8,vx:0,vy:0,t:0,col:'#7dff8a',ring:true,r:4});
+        particles.push({x:270,y:CFG.ceilY+8,vx:0,vy:0,t:0,col:'#7dff8a',ring:true,r:4});
         if (ST.tubeGift>0){ const g=ST.tubeGift*incBaseMult(); S.wallet+=g; S.earned+=g; }
         tone(620,.06,'triangle',.06); S.tubeT = 0;
       } else if (ST.overflowCash>0){ const g=ST.overflowCash*incBaseMult(); S.wallet+=g; S.earned+=g; S.tubeT=0; }
@@ -1070,14 +1014,14 @@ function updateRwButtons(){
 document.getElementById('rwX2').onclick=()=>{
   showRewardedAd(()=>{
     S.buffX2=Math.max(S.buffX2,0)+60;
-    floats.push({x:WORLD_CX(),y:300,t:0,col:'#ffd94a',txt:'×2 60s!'});
+    floats.push({x:270,y:300,t:0,col:'#ffd94a',txt:'×2 60s!'});
     save();
   });
 };
 document.getElementById('rwCash').onclick=()=>{
   showRewardedAd(()=>{
     BLUE+=10;
-    floats.push({x:WORLD_CX(),y:300,t:0,col:'#6cc4ff',txt:'+10',gem:'blue'});
+    floats.push({x:270,y:300,t:0,col:'#6cc4ff',txt:'+10',gem:'blue'});
     updateTree(); save();
   });
 };
@@ -1395,32 +1339,22 @@ document.addEventListener('pointerdown', ()=>{ try{ const a=ac(); if(a) a.resume
 /* ================= РЕНДЕР (адаптивная ширина) ================= */
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 let curRS=1, bgLayer=null, bgKey='';
-let VIEW_W=540;
+let VIEW_W=540, OFFX=0;
 function resize(){
   const wrap=document.getElementById('cvWrap');
   if (!wrap || wrap.clientWidth<10 || wrap.clientHeight<10) return;
   curRS=Math.min(2, window.devicePixelRatio||1);
   const ww=wrap.clientWidth, wh=wrap.clientHeight;
   const aspect=ww/wh;
-  // Keep the game world portrait and preserve its exact 540x720 proportions.
-  // The canvas is uniformly fitted inside Pikabu's available viewport.
-  VIEW_W=W;
-  ARENA_SCALE_X=1;
-  ARENA_SCALE_Y=1;
-  const sc=Math.min(ww/W, wh/H);
-  const cssW=VIEW_W*sc, cssH=H*sc;
-  cv.style.width=cssW+'px'; cv.style.height=cssH+'px';
-  cv.width=Math.max(1,Math.round(VIEW_W*curRS));
-  cv.height=Math.max(1,Math.round(H*curRS));
+  VIEW_W=Math.max(540, Math.min(1600, Math.round(aspect*720)));
+  OFFX=(VIEW_W-540)/2;
+  const sc=Math.min(ww/VIEW_W, wh/720);
+  cv.style.width=(VIEW_W*sc)+'px'; cv.style.height=(720*sc)+'px';
+  cv.width=Math.round(VIEW_W*curRS); cv.height=Math.round(720*curRS);
   ctx.setTransform(curRS,0,0,curRS,0,0);
   bgKey='';
 }
 addEventListener('resize', ()=>{ if(curView==='game') resize(); });
-if(typeof ResizeObserver!=='undefined'){
-  const cvResizeObserver=new ResizeObserver(()=>{if(curView==='game') resize();});
-  const cvResizeWrap=document.getElementById('cvWrap');
-  if(cvResizeWrap) cvResizeObserver.observe(cvResizeWrap);
-}
 const shade=(hex,k)=>{ const n=parseInt(hex.slice(1),16);
   return `rgb(${Math.min(255,(n>>16)*k|0)},${Math.min(255,(((n>>8)&255)*k)|0)},${Math.min(255,((n&255)*k)|0)})`; };
 const mixW=(hex,t)=>{ const n=parseInt(hex.slice(1),16);
@@ -1450,14 +1384,14 @@ function drawBackdrop(g,id,rnd){
   g.save();
   if (id===0){
     for(let i=0;i<70;i++){ g.globalAlpha=.2+rnd()*.6; g.fillStyle='#dfe8ff';
-      const sz=rnd()<.2?2:1; g.fillRect(rnd()*540, rnd()*BASE_H, sz, sz); }
+      const sz=rnd()<.2?2:1; g.fillRect(rnd()*540, rnd()*H, sz, sz); }
     g.globalAlpha=1;
     let nb=g.createRadialGradient(140,180,10,140,180,180);
     nb.addColorStop(0,'rgba(143,107,249,.16)'); nb.addColorStop(1,'rgba(143,107,249,0)');
-    g.fillStyle=nb; g.fillRect(-400,0,1340,BASE_H);
+    g.fillStyle=nb; g.fillRect(-400,0,1340,H);
     let nb2=g.createRadialGradient(420,420,10,420,420,200);
     nb2.addColorStop(0,'rgba(58,160,255,.12)'); nb2.addColorStop(1,'rgba(58,160,255,0)');
-    g.fillStyle=nb2; g.fillRect(-400,0,1340,BASE_H);
+    g.fillStyle=nb2; g.fillRect(-400,0,1340,H);
     const pg=g.createRadialGradient(415,125,8,430,140,50);
     pg.addColorStop(0,'#7fd4c9'); pg.addColorStop(1,'#1f6f66');
     g.fillStyle=pg; g.beginPath(); g.arc(430,140,44,0,7); g.fill();
@@ -1470,10 +1404,10 @@ function drawBackdrop(g,id,rnd){
     g.fillStyle=mg2; g.beginPath(); g.arc(440,110,90,0,7); g.fill();
     g.fillStyle='rgba(223,232,255,.85)'; g.beginPath(); g.arc(440,110,26,0,7); g.fill();
     let x=-420;
-    while(x<960){ const bw=40+rnd()*50, bh=180+rnd()*260, by=BASE_H-bh;
+    while(x<960){ const bw=40+rnd()*50, bh=180+rnd()*260, by=H-bh;
       g.fillStyle='rgba(10,16,32,.75)'; g.fillRect(x,by,bw,bh);
       g.fillStyle='rgba(255,217,74,.5)';
-      for(let wy=by+12; wy<BASE_H-10; wy+=22) for(let wx=x+7; wx<x+bw-8; wx+=16) if(rnd()<.35) g.fillRect(wx,wy,5,7);
+      for(let wy=by+12; wy<H-10; wy+=22) for(let wx=x+7; wx<x+bw-8; wx+=16) if(rnd()<.35) g.fillRect(wx,wy,5,7);
       x+=bw+6; }
   } else if (id===2){
     const gear=(cx,cy,r,n)=>{ g.fillStyle='rgba(10,16,32,.7)';
@@ -1488,13 +1422,13 @@ function drawBackdrop(g,id,rnd){
   } else if (id===3){
     for(let i=-2;i<7;i++){ g.fillStyle='rgba(223,232,255,.05)';
       g.beginPath(); g.moveTo(60+i*100,0); g.lineTo(110+i*100,0);
-      g.lineTo(130+i*100,BASE_H); g.lineTo(70+i*100,BASE_H); g.fill(); }
+      g.lineTo(130+i*100,H); g.lineTo(70+i*100,H); g.fill(); }
     g.strokeStyle='rgba(125,255,138,.25)'; g.lineWidth=6; g.lineCap='round';
     for(let i=0;i<6;i++){ const bx=40+i*90+rnd()*30; g.beginPath();
-      for(let y=BASE_H; y>BASE_H-160-rnd()*80; y-=12) g.lineTo(bx+Math.sin(y*.05+i)*10, y);
+      for(let y=H; y>H-160-rnd()*80; y-=12) g.lineTo(bx+Math.sin(y*.05+i)*10, y);
       g.stroke(); }
     g.strokeStyle='rgba(223,232,255,.25)'; g.lineWidth=2;
-    for(let i=0;i<14;i++){ g.beginPath(); g.arc(rnd()*540, rnd()*BASE_H, 3+rnd()*8, 0,7); g.stroke(); }
+    for(let i=0;i<14;i++){ g.beginPath(); g.arc(rnd()*540, rnd()*H, 3+rnd()*8, 0,7); g.stroke(); }
   } else if (id===4){
     const sg=g.createRadialGradient(400,170,10,400,170,120);
     sg.addColorStop(0,'rgba(255,153,51,.5)'); sg.addColorStop(1,'rgba(255,153,51,0)');
@@ -1530,27 +1464,25 @@ function renderStatic(key){
   let gr=g.createRadialGradient(VIEW_W/2,330,60,VIEW_W/2,360,Math.max(520,VIEW_W*.7));
   gr.addColorStop(0,'#2c4066'); gr.addColorStop(.6,'#1f2c4c'); gr.addColorStop(1,'#141d33');
   g.fillStyle=gr; g.fillRect(0,0,VIEW_W,H);
-  g.save();
-  g.save();
-  drawBackdrop(g, CFG.bg, rngFactory(S.level*7919+13)); g.restore();
-  let lp=g.createRadialGradient(WORLD_CX(),CFG.ceilY+50,10,WORLD_CX(),CFG.ceilY+50,150);
+  g.save(); g.translate(OFFX,0);
+  drawBackdrop(g, CFG.bg, rngFactory(S.level*7919+13));
+  let lp=g.createRadialGradient(270,CFG.ceilY+50,10,270,CFG.ceilY+50,150);
   lp.addColorStop(0,'rgba(160,200,255,.10)'); lp.addColorStop(1,'rgba(160,200,255,0)');
   g.fillStyle=lp; g.fillRect(-400,CFG.ceilY-40,1340,260);
-  let cg=g.createRadialGradient(WORLD_CX(),390,40,WORLD_CX(),390,260);
+  let cg=g.createRadialGradient(270,390,40,270,390,260);
   cg.addColorStop(0,'rgba(90,140,220,.10)'); cg.addColorStop(1,'rgba(90,140,220,0)');
   g.fillStyle=cg; g.fillRect(-400,120,1340,520);
   g.restore();
   const vg=g.createRadialGradient(VIEW_W/2,360,220,VIEW_W/2,360,Math.max(540,VIEW_W*.75));
   vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(5,8,16,.5)');
   g.fillStyle=vg; g.fillRect(0,0,VIEW_W,H);
-  g.save(); 
-  const cx=WORLD_CX();
-  const tg=g.createLinearGradient(cx-20,0,cx+20,0);
+  g.save(); g.translate(OFFX,0);
+  const tg=g.createLinearGradient(250,0,290,0);
   tg.addColorStop(0,'#4a5a7c'); tg.addColorStop(.3,'#c7d4ea'); tg.addColorStop(.55,'#8fa2c4'); tg.addColorStop(1,'#3d4c6b');
-  g.fillStyle=tg; rr(g,cx-20,0,40,CFG.ceilY-6,6); g.fill();
-  g.strokeStyle='#0d1526'; g.lineWidth=3; rr(g,cx-20,0,40,CFG.ceilY-6,6); g.stroke();
-  rr(g,cx-28,CFG.ceilY-12,56,14,5); g.fillStyle='#55688f'; g.fill(); g.stroke();
-  g.fillStyle='#1a2440'; g.beginPath(); g.ellipse(cx,CFG.ceilY-5,20,5,0,0,7); g.fill();
+  g.fillStyle=tg; rr(g,250,0,40,CFG.ceilY-6,6); g.fill();
+  g.strokeStyle='#0d1526'; g.lineWidth=3; rr(g,250,0,40,CFG.ceilY-6,6); g.stroke();
+  rr(g,242,CFG.ceilY-12,56,14,5); g.fillStyle='#55688f'; g.fill(); g.stroke();
+  g.fillStyle='#1a2440'; g.beginPath(); g.ellipse(270,CFG.ceilY-5,20,5,0,0,7); g.fill();
   g.lineCap='round';
   for (const [ax,ay,bx,by] of CFG.walls.slice(0,-1)){
     g.strokeStyle='#0d1526'; g.lineWidth=24; g.beginPath(); g.moveTo(ax,ay); g.lineTo(bx,by); g.stroke();
@@ -1661,7 +1593,7 @@ function draw(dt){
     ctx.beginPath(); ctx.arc(d.x,d.y,d.s,0,7); ctx.fill();
   }
   ctx.globalAlpha=1;
-  
+  ctx.translate(OFFX,0);
   pads().forEach((p,i)=>{
     const tgl=now-(padGlow[i]||-9);
     const pr=tgl<0.18 ? 1-tgl/0.18 : 0;
@@ -1678,10 +1610,10 @@ function draw(dt){
   const et=effTube();
   if (et>=1){
     const iv=tubeInterval(et), prog=Math.min(1,S.tubeT/iv);
-    const mg=ctx.createRadialGradient(WORLD_CX(),CFG.ceilY,2,WORLD_CX(),CFG.ceilY,34);
+    const mg=ctx.createRadialGradient(270,CFG.ceilY,2,270,CFG.ceilY,34);
     mg.addColorStop(0,`rgba(125,255,138,${.2+.5*prog})`); mg.addColorStop(1,'rgba(125,255,138,0)');
-    ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(WORLD_CX(),CFG.ceilY,34,0,7); ctx.fill();
-    const px=WORLD_CX()+26, py=16, pw=164, ph=40;
+    ctx.fillStyle=mg; ctx.beginPath(); ctx.arc(270,CFG.ceilY,34,0,7); ctx.fill();
+    const px=296, py=16, pw=164, ph=40;
     rr(ctx,px,py,pw,ph,10);
     const pg=ctx.createLinearGradient(0,py,0,py+ph);
     pg.addColorStop(0,'#2b3c63'); pg.addColorStop(1,'#141d33');
@@ -1743,7 +1675,7 @@ const $=id=>document.getElementById(id);
 function ui(){
   if (!S.won && S.coins.length===0 && S.wallet < cost('coin')){
     S.wallet = cost('coin')*ST.bailCoins;
-    floats.push({x:WORLD_CX(),y:CFG.ceilY+70,t:0,col:'#ffd94a',txt:L('bailout')+' +$'+fmt(S.wallet)});
+    floats.push({x:270,y:CFG.ceilY+70,t:0,col:'#ffd94a',txt:L('bailout')+' +$'+fmt(S.wallet)});
     save();
   }
   $('wallet').textContent='💵 '+fmt(S.wallet);
@@ -1802,7 +1734,7 @@ $('mReset').onclick=()=>{ if(confirm(L('reset_confirm'))){ localStorage.removeIt
 
 /* ================= СЕЙВ ================= */
 function buildSaveData(){ return {
-  worldVersion:4, worldWidth:W, level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
+  level:S.level, wallet:S.wallet, earned:S.earned, cb:S.cb, pb:S.pb, mb:S.mb, muted, music:musicOn, lang:LANG,
   tube:S.tube, tubeT:Math.round(S.tubeT*10)/10, buffX2:Math.round(S.buffX2), sale:S.sale, turbo:S.turbo,
   red:RED, blue:BLUE, owned:[...OWNED], cards:CARD_OWN, packs:PACK_INV,
   coins:S.coins.map(c=>[Math.round(c.x),Math.round(c.y),Math.round(c.vx),Math.round(c.vy),c.tier]) }; }
@@ -1816,13 +1748,8 @@ function restoreSaveData(d){ try{
   S={ level:Math.max(1,Math.floor(Number(d.level))), wallet:Math.max(0,Number(d.wallet)||0), earned:Math.max(0,Number(d.earned)||0),
       cb:Number(d.cb)||0, pb:Number(d.pb)||0, mb:Number(d.mb)||0, coins:[], won:false,
       tube:Number(d.tube)||0, tubeT:Number(d.tubeT)||0, buffX2:Number(d.buffX2)||0, sale:!!d.sale, turbo:!!d.turbo, comboN:0, comboT:0 };
-  const savedCoinXs=(Array.isArray(d.coins)?d.coins:[]).filter(c=>Array.isArray(c)&&c.length>=5).map(c=>Number(c[0])||0);
-  const saveVersion=Number(d.worldVersion)||1;
-  const legacyWidth=Number(d.worldWidth)>W?Number(d.worldWidth):(savedCoinXs.some(x=>x>W)?1600:W);
-  const oldXScale=legacyWidth/W*(saveVersion>=3?1.25:1);
   CFG=levelCfg(S.level); padGlow=[]; muted=!!d.muted; $('muteBtn').textContent=muted?'🔇':'';
-  const legacyYScale = saveVersion>=2 ? 2 : 1;
-  (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5){ S.coins.push({x:W/2+((Number(c[0])||legacyWidth/2)-legacyWidth/2)/oldXScale,y:(Number(c[1])||CFG.ceilY+26)*legacyYScale,vx:(Number(c[2])||0)/oldXScale,vy:(Number(c[3])||0)*legacyYScale,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); }});
+  (Array.isArray(d.coins)?d.coins:[]).forEach(c=>{ if(Array.isArray(c)&&c.length>=5) S.coins.push({x:Number(c[0])||270,y:Number(c[1])||CFG.ceilY+26,vx:Number(c[2])||0,vy:Number(c[3])||0,tier:Math.max(1,Math.floor(Number(c[4])||1)),cd:{},st:0,wt:0,sq:0,spin:Math.random()*6,trail:[]}); });
   return true;
  }catch(e){ console.warn('Save data restore failed:',e); return false; } }
 function save(){
